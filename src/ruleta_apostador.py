@@ -55,9 +55,12 @@ def simular_apuestas(
 
     bancarrotas: int = 0
     corridas_ganadas: int = 0
+    todas_fr_relativas: List[List[float]] = []
 
     for c in range(corridas):
         flujo_caja: List[float] = [capital_inicial]
+        fr_relativa_acumulada_corrida: List[float] = []
+        tiradas_ganadas: int = 0
         capital_actual: float = capital_inicial
         apuesta_actual: float = apuesta_base
         indice_fib: int = 0
@@ -68,14 +71,18 @@ def simular_apuestas(
                 bancarrotas += 1
                 # Rellenar el resto de las tiradas con el capital congelado
                 flujo_caja.extend([capital_actual] * (tiradas - n + 1))
+                # Rellenar el resto de fr_relativa_acumulada con el número de éxitos fijo y el denominador creciente
+                fr_relativa_acumulada_corrida.extend(
+                    [tiradas_ganadas / i for i in range(n, tiradas + 1)]
+                )
                 break
 
-            # Simulamos apostar a un color (18 números ganadores sobre 37)
             ## Hacer variabe en funcion del tipo de apuesta (color, par/impar, etc.) y del número elegido
             resultado = random.randint(0, 36)            
             gano, monto = determinar_resultado(tipo_apuesta, resultado, numero_elegido, color_elegido, par_elegido, apuesta_actual)
             if gano:
                 capital_actual += monto
+                tiradas_ganadas += 1
                 # Ajuste de apuesta según estrategia (GANA)
                 if estrategia == 'm':
                     apuesta_actual = apuesta_base
@@ -99,30 +106,32 @@ def simular_apuestas(
                 elif estrategia == 'o': # Paroli
                     apuesta_actual = apuesta_base
 
+            fr_relativa_acumulada_corrida.append(tiradas_ganadas / n)
             flujo_caja.append(capital_actual)
 
+        todas_fr_relativas.append(fr_relativa_acumulada_corrida)
         eje_x = range(0, len(flujo_caja))
-        
-        # Graficar en el primer subplot solo si es la primera corrida
-        if c == 0:
-            axs[0].plot(eje_x, flujo_caja, color='blue', alpha=0.8)
-            axs[0].set_title('Flujo de Caja - Corrida Individual')
-            axs[0].set_xlabel('n (Número de tiradas)')
-            axs[0].set_ylabel('fc (Flujo de caja)')
-            axs[0].grid(True)
-            if flujo_caja[-1] > capital_inicial:
-                print("La primera corrida ganó con capital final {:.2f} > {:.2f}".format(flujo_caja[-1], capital_inicial))
-                corridas_ganadas += 1
 
         # Graficar en el segundo subplot todas las corridas
         axs[1].plot(eje_x, flujo_caja, alpha=0.6)
-        if c > 0 and flujo_caja[-1] > capital_inicial:
-                    # print(f"Corrida {c} ganó con capital final {flujo_caja[-1]:.2f} > {capital_inicial:.2f}")
+        if c >= 0 and flujo_caja[-1] > capital_inicial:
                     corridas_ganadas += 1
 
-        # Graficar en ambos subplot una linea de puntos en el capital inicial
-        axs[0].axhline(y=capital_inicial, color='red', linestyle='--', label='Capital Inicial')
+        # Graficar en el último subplot una linea de puntos en el capital inicial
         axs[1].axhline(y=capital_inicial, color='red', linestyle='--', label='Capital Inicial')
+    
+    # Graficar histograma de la frecuencia relativa acumulada en el primer subplot
+    max_len: int = tiradas
+    fr_promedio: List[float] = []
+    for i in range(max_len):
+        valores: List[float] = [fr[i] for fr in todas_fr_relativas]
+        fr_promedio.append(sum(valores) / len(valores) if valores else 0.0)
+    
+    axs[0].bar(range(len(fr_promedio)), fr_promedio, color='blue', alpha=0.8, edgecolor='black')
+    axs[0].set_title('Fr promedio de obtener la apuesta favorable')
+    axs[0].set_xlabel('n (Número de tiradas)')
+    axs[0].set_ylabel('fr (frecuencia relativa promedio)')
+    axs[0].grid(True, alpha=0.3)
      
     axs[1].set_title(f'Flujo de Caja - {corridas} Corridas Simultáneas (Bancarrotas: {bancarrotas}, Ganadas: {corridas_ganadas}, Perdidas {corridas-corridas_ganadas})')
     axs[1].set_xlabel('n (Número de tiradas)')
