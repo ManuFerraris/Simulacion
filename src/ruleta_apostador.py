@@ -16,7 +16,7 @@ nombres_estrategias: Dict[str, str] = {
 nombres_tipos_apuestas: Dict[str, str] = {
     'p': 'Pleno',
     'c': 'Color',
-    'i': 'Par/Impar'
+    'i': 'Par-Impar'
 }
 
 def simular_apuestas(
@@ -54,6 +54,7 @@ def simular_apuestas(
     )
 
     bancarrotas: int = 0
+    corridas_ganadas: int = 0
 
     for c in range(corridas):
         flujo_caja: List[float] = [capital_inicial]
@@ -71,8 +72,7 @@ def simular_apuestas(
 
             # Simulamos apostar a un color (18 números ganadores sobre 37)
             ## Hacer variabe en funcion del tipo de apuesta (color, par/impar, etc.) y del número elegido
-            resultado = random.randint(0, 36)
-
+            resultado = random.randint(0, 36)            
             gano, monto = determinar_resultado(tipo_apuesta, resultado, numero_elegido, color_elegido, par_elegido, apuesta_actual)
             if gano:
                 capital_actual += monto
@@ -110,11 +110,21 @@ def simular_apuestas(
             axs[0].set_xlabel('n (Número de tiradas)')
             axs[0].set_ylabel('fc (Flujo de caja)')
             axs[0].grid(True)
+            if flujo_caja[-1] > capital_inicial:
+                print("La primera corrida ganó con capital final {:.2f} > {:.2f}".format(flujo_caja[-1], capital_inicial))
+                corridas_ganadas += 1
 
         # Graficar en el segundo subplot todas las corridas
         axs[1].plot(eje_x, flujo_caja, alpha=0.6)
+        if c > 0 and flujo_caja[-1] > capital_inicial:
+                    # print(f"Corrida {c} ganó con capital final {flujo_caja[-1]:.2f} > {capital_inicial:.2f}")
+                    corridas_ganadas += 1
 
-    axs[1].set_title(f'Flujo de Caja - {corridas} Corridas Simultáneas (Bancarrotas: {bancarrotas})')
+        # Graficar en ambos subplot una linea de puntos en el capital inicial
+        axs[0].axhline(y=capital_inicial, color='red', linestyle='--', label='Capital Inicial')
+        axs[1].axhline(y=capital_inicial, color='red', linestyle='--', label='Capital Inicial')
+     
+    axs[1].set_title(f'Flujo de Caja - {corridas} Corridas Simultáneas (Bancarrotas: {bancarrotas}, Ganadas: {corridas_ganadas}, Perdidas {corridas-corridas_ganadas})')
     axs[1].set_xlabel('n (Número de tiradas)')
     axs[1].set_ylabel('fc (Flujo de caja)')
     axs[1].grid(True)
@@ -131,7 +141,7 @@ def simular_apuestas(
     output_path = output_dir / filename
 
     plt.savefig(output_path)
-    print(f"Gráfico generado: {output_path} | Bancarrotas totales: {bancarrotas}")
+    print(f"Gráfico generado: {output_path} | Bancarrotas totales: {bancarrotas} | Ganadas: {corridas_ganadas}")
     plt.show()
 
 def main() -> None:
