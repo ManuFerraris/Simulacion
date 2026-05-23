@@ -59,7 +59,43 @@
 
 \section{Introducción}
 
-\section{Métodos y Fórmulas Empleadas}
+\section{Desarrollo Teórico}
+
+\subsection{Generadores de numeros pseudoaleatorios implementados}
+
+
+\subsection{Pruebas de aleatoriedad}
+Las pruebas de aleatoriedad se aplican a los generadores para evaluar su calidad.
+Si bien, una prueba simple puede realizarse mediante observación visual de ciertos gráficos, no son en absoluto suficientes para validar un generador.
+Por ello, se aplican pruebas estadísticas formales que evalúan diferentes aspectos de la secuencia generada, como la uniformidad, la independencia y la ausencia de patrones predecibles.
+
+Entre las pruebas estadísticas se pueden diferenciar:
+
+\begin{itemize}
+  \item \textbf{empíricas:} Evalúan estadísticas de sucesiones de números.
+  \item \textbf{teóricas:} Se establecen las características de las sucesiones usando métodos de teoría de números con base en la regla de recurrencia que generó la sucesión.
+\end{itemize}
+
+
+Prueba de bondad de ajuste \textbf{chi cuadrado}
+Esta prueba determina si una sola variable categórica se ajusta a una distribución teórica esperada.
+Las hipótesis de la misma son:
+\begin{itemize}
+  \item $H_0$: La variable se ajusta a la distribución teórica \textit{F}.
+  \item $H_1$: La variable no se ajusta a la distribución teórica \textit{F}.
+\end{itemize}
+
+Procedimiento:
+\begin{list}{label}{spacing}
+  \item [1.] Partir el soporte de F en c celdas que son exhaustivas y mutuamente
+  \item [2.] Contar el número de observaciones $O_i$ que caen en cada celda i.
+\end{list}
+
+Para evaluar la calidad del generador de números pseudoaleatorios en el dominio $[0, 1)$, se realizó una partición del espacio muestral en $k=10$ sub-intervalos equiprobables de amplitud $0.1$. La hipótesis nula ($H_0$) establece que el generador sigue una distribución uniforme continua, lo que implica que la frecuencia esperada $E_i$ para cada intervalo $i$ es constante e igual a $n/k$, donde $n$ representa el tamaño de la muestra
+
+n = 10000
+
+% https://es.wikipedia.org/wiki/Prueba_%CF%87%C2%B2
 
 \section{Resultados}
 

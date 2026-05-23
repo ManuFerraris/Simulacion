@@ -3,6 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
+from scipy import stats
 
 nombres_generadores: Dict[str, str] = {
     'GCL': 'Generador Congruencial Lineal',
@@ -112,6 +113,38 @@ def graficar_scatter_randu_2d() -> None:
     plt.grid(True, alpha=0.3)
     plt.show()
 
+def prueba_chi_cuadrado(numeros: List[float], k: int = 10) -> float:
+    """
+    Realiza la prueba de chi-cuadrado para evaluar la uniformidad de los números generados.
+
+    Parámetros
+    ----------
+    numeros : list[float]
+        Lista de valores entre 0 y 1.
+
+    k : int
+        Número de intervalos para la prueba (default: 10).
+
+    Retorna
+    -------
+    float
+        Valor del estadístico chi-cuadrado.
+    """
+    n = len(numeros)
+    # Definir los 10 bins
+    bins = np.linspace(0, 1, 11) # [0, 0.1, ..., 1.0]
+
+    # Contar frecuencias
+    observados, _ = np.histogram(numeros, bins=bins)
+
+    # Frecuencias esperadas (10000 / 10 = 1000 por cada bin)
+    esperados = np.full(k, n/k)
+
+    # Test
+    chi2, p_valor = stats.chisquare(f_obs=observados, f_exp=esperados)
+
+    print(f"Chi2: {chi2}, p-valor: {p_valor}")
+    return chi2
 
 # Esta generación de bitmap solo considera blanco o negro, podría extenderse para utilizar más escalas de colores y mostrar de otro modo los patrones
 def graficar_bitmap(numeros: List[float], titulo: str = "Bitmap aleatorio"):
@@ -171,3 +204,6 @@ if __name__ == "__main__":
         graficar_scatter_randu_2d()
     
     graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
+
+    deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)
+    print(f"Prueba chi-cuadrado para {nombres_generadores[args.generador]}: {deviacion_chi_cuadrado:.4f}")
