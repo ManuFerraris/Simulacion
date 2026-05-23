@@ -1,0 +1,7 @@
+# Archivos temporales de LaTeX
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
