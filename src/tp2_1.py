@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
 from scipy import stats
+from scipy.stats import chi2
 
 nombres_generadores: Dict[str, str] = {
     'GCL': 'Generador Congruencial Lineal',
@@ -141,10 +142,8 @@ def prueba_chi_cuadrado(numeros: List[float], k: int = 10) -> float:
     esperados = np.full(k, n/k)
 
     # Test
-    chi2, p_valor = stats.chisquare(f_obs=observados, f_exp=esperados)
-
-    print(f"Chi2: {chi2}, p-valor: {p_valor}")
-    return chi2
+    statistic, pvalue = stats.chisquare(f_obs=observados, f_exp=esperados)
+    return statistic
 
 # Esta generación de bitmap solo considera blanco o negro, podría extenderse para utilizar más escalas de colores y mostrar de otro modo los patrones
 def graficar_bitmap(numeros: List[float], titulo: str = "Bitmap aleatorio"):
@@ -205,5 +204,4 @@ if __name__ == "__main__":
     
     graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
 
-    deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)
-    print(f"Prueba chi-cuadrado para {nombres_generadores[args.generador]}: {deviacion_chi_cuadrado:.4f}")
+    deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)  
