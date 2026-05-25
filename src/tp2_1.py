@@ -5,12 +5,15 @@ import matplotlib.pyplot as plt
 from typing import Dict, List
 from scipy import stats
 from scipy.stats import chi2
+import requests
+from collections import Counter
 
 nombres_generadores: Dict[str, str] = {
     'GCL': 'Generador Congruencial Lineal',
     'p': "Python Native",
     'ms': "Parte Media del Cuadrado",
     'r': "RANDU",
+    'ro': "Random.org",
 }
 
 # constantes para GCL de java
@@ -43,6 +46,32 @@ generator_randu :Dict[str, int] = {
 # Evaluar con al menos 4 tests
 # comparar generadores entre sí y vs generador de python
 
+def get_random_org_url(n: int, min_value: int = 1, max_value: int = 10) -> str:
+    return f"https://www.random.org/integers/?num={n}&min={min_value}&max={max_value}&col=1&base=10&format=plain&rnd=new"
+
+def generador_random_org(n: int) -> List[int]:
+    """
+    Genera números pseudoaleatorios (entre 1 y 10) utilizando la API de random.org.    
+    Parámetros
+    ----------
+    n : int
+        Cantidad de números a generar.
+
+    Retorna
+    -------
+    list[int]
+        Lista de números pseudoaleatorios entre 1 y 10.
+    """
+    url = get_random_org_url(n)
+    
+    try:
+        response = requests.get(url)
+        if(response.status_code != 200):
+            raise Exception(f"Error al obtener datos de random.org: {response.status_code}")
+        numeros = [float(num) for num in response.text.strip().split('\n')]
+        return numeros    
+    except Exception as e:
+        raise Exception(e)
 
 def generador_congruencial_lineal(n: int) -> List[float]:
     a: int = glc_java['A']
@@ -181,10 +210,56 @@ def graficar_bitmap(numeros: List[float], titulo: str = "Bitmap aleatorio"):
 
     plt.show()
 
+def graficar_histograma(numeros: List[float], generador: str):
+    plt.figure(figsize=(8, 6))
+    clases = 10
+    plt.hist(numeros, bins=clases, edgecolor='blue', alpha=0.7)
+
+    frec_teorica = len(numeros) / clases
+    plt.axhline(frec_teorica, color='red', linestyle='--', linewidth=2, label=f'Frecuencia teórica: {frec_teorica:.2f}')
+    plt.xlabel('Valor')
+    plt.ylabel('Frecuencia')
+    plt.title(f'Histograma - {generador}')
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
+def graficar_barras(numeros, generador):
+    valores = np.arange(1, 11)
+    conteos = Counter(numeros)
+    frecuencias = [conteos[v] for v in valores]
+    frec_teorica = len(numeros) / len(valores)
+
+    plt.figure(figsize=(8, 6))
+
+    plt.bar(
+        valores,
+        frecuencias,
+        width=0.8,
+        edgecolor='blue',
+        alpha=0.7
+    )
+
+    plt.axhline(
+        frec_teorica,
+        color='red',
+        linestyle='--',
+        linewidth=2,
+        label=f'Frecuencia teórica: {frec_teorica:.2f}'
+    )
+
+    plt.xticks(valores)
+
+    plt.xlabel('Valor')
+    plt.ylabel('Frecuencia')
+    plt.title(f'Distribución de frecuencias - {generador}')
+    plt.grid(True, axis='y', alpha=0.3)
+    plt.legend()
+
+    plt.show()
 
 if __name__ == "__main__":
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    parser.add_argument('-g', '--generador', choices=['GCL', 'p', 'ms', 'r'], required=True, help=f"GCL={nombres_generadores['GCL']}, p={nombres_generadores['p']}, ms={nombres_generadores['ms']}, r={nombres_generadores['r']}")
+    parser.add_argument('-g', '--generador', choices=['GCL', 'p', 'ms', 'r', 'ro'], required=True, help=f"GCL={nombres_generadores['GCL']}, p={nombres_generadores['p']}, ms={nombres_generadores['ms']}, r={nombres_generadores['r']}, ro={nombres_generadores['ro']}")
     parser.add_argument('-n', '--ladoGrilla', type=int, required=True, help="Lado de grilla para gráfico")
     
     args: argparse.Namespace = parser.parse_args()
@@ -201,7 +276,12 @@ if __name__ == "__main__":
     elif args.generador == 'r':
         numeros = randu(dimension_grilla)
         graficar_scatter_randu_2d()
-    
-    graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
+    elif args.generador == 'ro':
+        numeros = generador_random_org(args.ladoGrilla)
 
-    deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)  
+    if args.generador != 'ro':
+        graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
+        graficar_histograma(numeros, nombres_generadores[args.generador])
+        deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)  
+    else: 
+        graficar_barras(numeros, nombres_generadores[args.generador])
