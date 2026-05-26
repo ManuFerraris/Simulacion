@@ -61,7 +61,7 @@
 
 \section{Desarrollo Teórico}
 
-\subsection{Generadores de numeros pseudoaleatorios implementados}
+\subsection{Generadores de números pseudoaleatorios implementados}
 
 
 \subsection{Pruebas de aleatoriedad}
@@ -77,7 +77,8 @@ Entre las pruebas estadísticas se pueden diferenciar:
 \end{itemize}
 
 
-Prueba de bondad de ajuste \textbf{chi cuadrado}
+\textbf{Prueba de bondad de ajuste chi cuadrado.}
+
 Esta prueba determina si una sola variable categórica se ajusta a una distribución teórica esperada.
 Las hipótesis de la prueba son:
 \begin{itemize}
@@ -106,6 +107,41 @@ Una vez obtenido el valor del estadístico es posible valorar el mismo comparán
 El p-valor se interpreta como la probabilidad de obtener un valor del estadístico de prueba tan extremo como el observado, bajo la suposición de que la hipótesis nula es verdadera.
 % https://es.wikipedia.org/wiki/Prueba_%CF%87%C2%B2
 % https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chisquare.html
+
+
+\textbf{Prueba de rachas.}
+
+Se define a una racha en una secuencia a "cualquier subsecuencia no vacía de elementos consecutivos del mismo valor."
+Para nuestro caso partimos de la secuencia de números generados y la transformamos en una secuencia binaria, donde cada elemento se clasifica como "mayor o igual a la media" o "menor a la media".
+
+Las hipótesis de la prueba son:
+\begin{itemize}
+  \item $H_0$: La secuencia es independiente.
+  \item $H_1$: La secuencia no es independiente.
+\end{itemize}
+El procedimiento para esta prueba es el siguiente:
+\begin{list}{label}{}
+  \item [1.] Transformar la secuencia de números generados en una secuencia binaria.
+  \item [2.] Contar el número total de rachas $R$ en la secuencia binaria.
+\end{list}
+Bajo la hipótesis nula de independencia, el número de rachas $R$ en una secuencia de longitud $n$ sigue aproximadamente una distribución normal con media $\mu_R$ y desviación estándar $\sigma_R$ dadas por:
+$$\mu_R = \frac{2n_1 n_2}{n} + 1$$
+$$\sigma_R = \sqrt{\frac{2n_1 n_2 (2n_1 n_2 - n_1 - n_2)}{(n_1+n_2)^2 (n_1 + n_2 - 1)}}$$
+donde $n_1$ es el número de elementos en la secuencia binaria que son "mayor o igual a la media" y $n_2$ es el número de elementos que son "menor a la media".
+El estadístico de prueba se calcula como:
+$$Z = \frac{R - \mu_R}{\sigma_R}$$
+donde $R$ es el número total de rachas observadas en la secuencia binaria.
+Finalmente, se compara el valor absoluto del estadístico $Z$ con el valor crítico de la distribución normal estándar para el nivel de significancia elegido, o se calcula el p-valor asociado al estadístico $Z$ para determinar si se rechaza o no la hipótesis nula de independencia.
+
+En la implementación práctica en \textit{Python} de esta prueba, se utilizó la función \texttt{runstest\_1samp} del módulo \texttt{statsmodels.sandbox.stats.runs}, que realiza automáticamente los cálculos necesarios para obtener el estadístico de prueba y el p-valor correspondiente.
+
+
+\subsection{Generadores de números aleatorios reales implementados}
+Para la implementación de generadores de números aleatorios reales se desarrolló una función mediante integración con la API de Random.org, que proporciona números aleatorios generados a partir de fenómenos físicos, como el ruido atmosférico.
+
+La API pública "gratuita" permite obtener números aleatorios enteros en el rango $[1, 10]$, y se pueden solicitar secuencias de números con una longitud específica.
+Por este motivo fue necesario adaptar las pruebas y gráficas a comportamientos de variables aleatorias discretas, utilizando intervalos de clase adecuados para la prueba de chi-cuadrado y ajustando el gráfico de barras para mostrar la frecuencia de cada número entero generado.
+
 \section{Resultados}
 
 \begin{figure}[htbp]
@@ -143,6 +179,19 @@ El p-valor se interpreta como la probabilidad de obtener un valor del estadísti
   \bibitem{cpython_random}
   Python Software Foundation. \textit{Source code for random.py}. GitHub - CPython Repository.
   Recuperado de: \url{https://github.com/python/cpython/blob/main/Lib/random.py}
+
+
+  \bibitem{scipy_chisquare}
+  SciPy Developers. (2024). \textit{scipy.stats.chisquare Documentation}.
+  Recuperado de: \url{https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chisquare.html}
+
+  \bibitem{statsmodels_runs}
+  Statsmodels Developers. (2024). \textit{statsmodels.sandbox.stats.runs.runstest\_1samp Documentation Documentation}.
+  Recuperado de: \url{https://www.statsmodels.org/stable/generated/statsmodels.sandbox.stats.runs.runstest_1samp.html}
+
+  \bibitem{random_org_api}
+  Random.org. (2024). \textit{Random.org HTTP API Documentation}.
+  Recuperado de: \url{https://www.random.org/clients/http/api/}
 
 \end{thebibliography}
 
