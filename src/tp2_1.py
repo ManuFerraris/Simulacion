@@ -7,6 +7,8 @@ from scipy import stats
 from scipy.stats import chi2
 import requests
 from collections import Counter
+from statsmodels.sandbox.stats.runs import runstest_1samp
+from tabulate import tabulate
 
 nombres_generadores: Dict[str, str] = {
     'GCL': 'Generador Congruencial Lineal',
@@ -143,36 +145,58 @@ def graficar_scatter_randu_2d() -> None:
     plt.grid(True, alpha=0.3)
     plt.show()
 
-def prueba_chi_cuadrado(numeros: List[float], k: int = 10) -> float:
+def generar_bins_0_1(k: int = 10) -> np.ndarray:
+    """
+    Genera los bordes de intervalo para una prueba de chi-cuadrado uniforme en [0, 1].
+    """
+    return np.linspace(0.0, 1.0, k + 1)
+
+
+def prueba_chi_cuadrado(numeros: List[float], bins: np.ndarray) -> tuple[float, float]:
     """
     Realiza la prueba de chi-cuadrado para evaluar la uniformidad de los números generados.
 
     Parámetros
     ----------
     numeros : list[float]
-        Lista de valores entre 0 y 1.
+        Lista de valores numéricos.
 
-    k : int
-        Número de intervalos para la prueba (default: 10).
+    bins : np.ndarray
+        Bordes de los intervalos para la prueba.
 
     Retorna
     -------
     float
         Valor del estadístico chi-cuadrado.
+    float
+        Valor del p-valor.
     """
-    n = len(numeros)
-    # Definir los 10 bins
-    bins = np.linspace(0, 1, 11) # [0, 0.1, ..., 1.0]
-
-    # Contar frecuencias
+    n: int = len(numeros)
     observados, _ = np.histogram(numeros, bins=bins)
+    esperados: np.ndarray = np.full(len(observados), n / len(observados))
 
-    # Frecuencias esperadas (10000 / 10 = 1000 por cada bin)
-    esperados = np.full(k, n/k)
-
-    # Test
     statistic, pvalue = stats.chisquare(f_obs=observados, f_exp=esperados)
-    return statistic
+    return statistic, pvalue
+
+def prueba_rachas(numeros: List[float]) -> tuple[float, float]:
+    """
+    Realiza la prueba de rachas para evaluar la independencia de los números generados.
+
+    Parámetros
+    ----------
+    numeros : list[float]
+        Lista de valores entre 0 y 1 o entre 1 y 10.
+
+    Retorna
+    -------
+    float
+        Valor del estadístico de rachas.
+    float
+        Valor del p-valor.
+    """
+    z_stat, p_valor = runstest_1samp(numeros, cutoff='median', correction=True)
+
+    return z_stat, p_valor
 
 # Esta generación de bitmap solo considera blanco o negro, podría extenderse para utilizar más escalas de colores y mostrar de otro modo los patrones
 def graficar_bitmap(numeros: List[float], titulo: str = "Bitmap aleatorio"):
@@ -282,6 +306,14 @@ if __name__ == "__main__":
     if args.generador != 'ro':
         graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
         graficar_histograma(numeros, nombres_generadores[args.generador])
-        deviacion_chi_cuadrado: float = prueba_chi_cuadrado(numeros)  
-    else: 
+    else:
         graficar_barras(numeros, nombres_generadores[args.generador])
+    
+    # Ejecucion de pruebas estadísticas
+    chi_stat, p_valor_chi = prueba_chi_cuadrado(numeros, bins=generar_bins_0_1() if args.generador != 'ro' else np.arange(1, 12))    
+    z_stat, p_valor = prueba_rachas(numeros)
+    nivel_significancia = 0.05
+
+    headers = ["Generador", "Tipo de generador", "Test Chi-cuadrado", "p-valor Chi-cuadrado", "Test Rachas", "p-valor Rachas"]
+    data = [[nombres_generadores[args.generador], "PseudoAleatorio" if args.generador != 'ro' else "Aleatorio", f"{chi_stat:.4f}", f"{p_valor_chi:.4f}", f"{z_stat:.4f}", f"{p_valor:.4f}"]]
+    print(tabulate(data, headers=headers, tablefmt="grid"))
