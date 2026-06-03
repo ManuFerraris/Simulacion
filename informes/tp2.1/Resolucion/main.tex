@@ -58,11 +58,44 @@
 \end{abstract}
 
 \section{Introducción}
+En simulación es fundamental disponer de secuencias de números aleatorios que permitan modelar fenómenos inciertos. Debido a que las computadoras son sistemas determinísticos, generalmente se utilizan generadores de números pseudoaleatorios, los cuales producen secuencias que intentan imitar el comportamiento de números verdaderamente aleatorios.
+
+El objetivo de este trabajo es implementar y analizar distintos generadores de números pseudoaleatorios, comparando su comportamiento mediante pruebas estadísticas de uniformidad e independencia. Además, se incluye una comparación con números aleatorios reales obtenidos mediante la plataforma Random.org.
+
+Para evaluar la calidad de los generadores se aplicaron pruebas estadísticas como Chi-Cuadrado y Rachas, complementadas con representaciones gráficas que permiten identificar patrones y posibles deficiencias en las secuencias generadas.
+
 
 \section{Desarrollo Teórico}
 
 \subsection{Generadores de números pseudoaleatorios implementados}
 
+\subsubsection{Generador Congruencial Lineal (GCL)}
+
+El generador congruencial lineal es uno de los métodos más utilizados para la generación de números pseudoaleatorios. Su funcionamiento se basa en la relación de recurrencia:
+
+[
+X_{n+1} = (aX_n + c) \bmod m
+]
+
+donde (a) es el multiplicador, (c) es el incremento, (m) es el módulo y (X_0) representa la semilla inicial.
+
+En la implementación realizada se utilizaron los parámetros empleados internamente por Java, permitiendo generar valores pseudoaleatorios normalizados en el intervalo ([0,1)).
+
+\subsubsection{Método de la Parte Media del Cuadrado}
+
+Este método fue propuesto por John von Neumann y consiste en elevar al cuadrado una semilla numérica y extraer los dígitos centrales del resultado para formar la nueva semilla.
+
+Aunque históricamente tuvo importancia en los primeros estudios sobre generación de números pseudoaleatorios, presenta limitaciones importantes debido a la aparición de ciclos cortos y convergencia hacia valores repetidos.
+
+\subsubsection{Generador RANDU}
+
+RANDU es un generador congruencial lineal históricamente conocido por sus deficiencias estadísticas. Utiliza la expresión:
+
+[
+X_{n+1} = (65539 X_n) \bmod 2^{31}
+]
+
+A pesar de haber sido ampliamente utilizado en la década de 1960, posteriormente se comprobó que introduce fuertes correlaciones entre valores consecutivos, generando patrones claramente visibles en representaciones gráficas.
 
 \subsection{Pruebas de aleatoriedad}
 Las pruebas de aleatoriedad se aplican a los generadores para evaluar su calidad.
@@ -144,12 +177,16 @@ Por este motivo fue necesario adaptar las pruebas y gráficas a comportamientos 
 
 \section{Resultados}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=1\textwidth]{./images/estrategia_o_capital_f.png}
-  \caption{Análisis integral de la simulación larga ($t=200, c=20$): Convergencia de métricas, distribución de frecuencias y validación del TCL.}
-  \label{fig:sim_larga}
-\end{figure}
+Se ejecutaron las pruebas estadísticas sobre los distintos generadores implementados utilizando muestras de tamaño n = 10000.
+
+Para cada generador se obtuvo:
+
+\begin{itemize}
+    \item Histograma de frecuencias.
+    \item Bitmap de distribución.
+    \item Estadístico Chi-Cuadrado.
+    \item Prueba de Rachas.
+\end{itemize}
 
 \section{Discusión y Conclusiones}
 
