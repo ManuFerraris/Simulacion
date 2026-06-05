@@ -28,7 +28,7 @@ glc_java :Dict[str, int] = {
 
 # constantes para generador medio de cuadrado
 generator_ms :Dict[str, int] = {
-    'SEED': 3972
+    'SEED': 3792
 }
 # seed 2159 "rompe" rápidamente. Estaría bien mostrarlo en el informe.
 # seed 1231, 9731 generan patrón notable en 512x5125
@@ -115,33 +115,27 @@ def randu(n: int) -> List[float]:
 
     return nums
 
-
-# Esta implementación la generó para mostrar la correlación de RANDU. 
-# Estaría bien adaptarla a los números generados que para poder aplicarle varios tests
-def graficar_scatter_randu_2d() -> None:
+def graficar_scatter_2d(numeros: List[float], nombre_generador: str) -> None:
     """
-    Grafica X_{n+1} en función de X_n para RANDU.
-    Permite visualizar las correlaciones de RANDU.
+    Grafica X_{n+1} en función de X_n
+    Permite visualizar las correlaciones
+    
+    Parámetros
+    ----------
+    numeros : list[float]
+        Lista de valores numéricos.
+    nombre_generador : str
+        Nombre del generador de números pseudoaleatorios.
     """
-    # Generamos suficientes números para tener pares consecutivos
-    n: int = 10000
-    x: int = generator_randu['SEED']
-    numeros: List[float] = []
-    
-    for _ in range(n):
-        x = (generator_randu['A'] * x) % generator_randu['M']
-        numeros.append(x / generator_randu['M'])
-    
     # Creamos pares (X_n, X_{n+1})
     x_n: np.ndarray = np.array(numeros[:-1])
     x_n_plus_1: np.ndarray = np.array(numeros[1:])
     
-    # Graficamos
     plt.figure(figsize=(8, 8))
     plt.scatter(x_n, x_n_plus_1, alpha=0.5, s=1)
     plt.xlabel('$X_n$')
     plt.ylabel('$X_{n+1}$')
-    plt.title('RANDU: $X_{n+1}$ vs $X_n$')
+    plt.title(f'{nombre_generador}: $X_{{n+1}}$ vs $X_n$')
     plt.grid(True, alpha=0.3)
     plt.show()
 
@@ -151,6 +145,18 @@ def generar_bins_0_1(k: int = 10) -> np.ndarray:
     """
     return np.linspace(0.0, 1.0, k + 1)
 
+def prueba_series(numeros: List[float]) -> tuple[float, float]:
+    """
+    Realizar la prueba dividiendo el espacio en k x k celdas y contando las frecuencias observadas. Luego, comparar con las frecuencias esperadas bajo la hipótesis de independencia utilizando una prueba de chi-cuadrado.
+    """
+    k: int = 10
+    bins: np.ndarray = np.linspace(0.0, 1.0, k + 1)
+    observed, _, _ = np.histogram2d(numeros[:-1], numeros[1:], bins=[bins, bins])
+    num_pairs = len(numeros) - 1
+    expected_val = num_pairs / (k * k)
+    statistic, pvalue = stats.chisquare(f_obs=observed.flatten(), f_exp=np.full(k*k, expected_val))
+
+    return statistic, pvalue
 
 def prueba_chi_cuadrado(numeros: List[float], bins: np.ndarray) -> tuple[float, float]:
     """
@@ -197,6 +203,74 @@ def prueba_rachas(numeros: List[float]) -> tuple[float, float]:
     z_stat, p_valor = runstest_1samp(numeros, cutoff='median', correction=True)
 
     return z_stat, p_valor
+
+def prueba_kolmogorov_smirnov(numeros: List[float]) -> tuple[float, float]:
+    """
+    Realiza la prueba de Kolmogorov-Smirnov para evaluar la uniformidad de los números generados.
+
+    Parámetros
+    ----------
+    numeros : list[float]
+
+    Retorna
+    -------
+    float
+        Valor del estadístico D.
+    float
+        Valor del p-valor.
+    """ 
+    statistic, pvalue = stats.kstest(numeros, 'uniform')
+    return statistic, pvalue
+
+def prueba_cusum(numeros: List[float]) -> tuple[float, float]:
+    """
+    Realiza la prueba de CUSUM para evaluar la independencia de los números generados.
+
+    Parámetros
+    ----------
+    numeros : list[float]
+
+    Retorna
+    -------
+    float
+        Valor del estadístico CUSUM.
+    float
+        Valor del p-valor.
+    """
+    n: int = len(numeros)
+    media: float = np.mean(numeros)
+    cusum: np.ndarray = np.cumsum(numeros - media)
+    
+    statistic: float = np.max(np.abs(cusum)) / np.sqrt(n * np.var(numeros))
+    pvalue: float = 2 * (1 - stats.norm.cdf(statistic))
+
+    return statistic, pvalue
+
+def graficar_cusum(numeros: List[float], nombre_generador: str) -> None:
+    """
+    Grafica la función de CUSUM para evaluar la independencia de los números generados.
+
+    Parámetros
+    ----------
+    numeros : list[float]
+        Lista de valores numéricos.
+
+    nombre_generador : str
+        Nombre del generador de números pseudoaleatorios.
+    """
+    n: int = len(numeros)
+    media: float = np.mean(numeros)
+    cusum: np.ndarray = np.cumsum(numeros - media)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(cusum, label='CUSUM', color='blue')
+    plt.axhline(0, color='red', linestyle='--', label='Media')
+    plt.xlabel('Índice')
+    plt.ylabel('CUSUM')
+    plt.title(f'Gráfico CUSUM - {nombre_generador}')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.show()
 
 # Esta generación de bitmap solo considera blanco o negro, podría extenderse para utilizar más escalas de colores y mostrar de otro modo los patrones
 def graficar_bitmap(numeros: List[float], titulo: str = "Bitmap aleatorio"):
@@ -281,6 +355,13 @@ def graficar_barras(numeros, generador):
 
     plt.show()
 
+def graficar_kolmogorov_smirnov(numeros: List[float], generador: str):
+    plt.figure(figsize=(8, 6))
+    stats.probplot(numeros, dist="uniform", plot=plt)
+    plt.title(f'Gráfico Distribución empírica vs Distribución teórica - {generador}')
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
 if __name__ == "__main__":
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument('-g', '--generador', choices=['GCL', 'p', 'ms', 'r', 'ro'], required=True, help=f"GCL={nombres_generadores['GCL']}, p={nombres_generadores['p']}, ms={nombres_generadores['ms']}, r={nombres_generadores['r']}, ro={nombres_generadores['ro']}")
@@ -299,7 +380,6 @@ if __name__ == "__main__":
         numeros = generador_media_cuadrado(dimension_grilla)
     elif args.generador == 'r':
         numeros = randu(dimension_grilla)
-        graficar_scatter_randu_2d()
     elif args.generador == 'ro':
         numeros = generador_random_org(args.ladoGrilla)
 
@@ -308,12 +388,24 @@ if __name__ == "__main__":
         graficar_histograma(numeros, nombres_generadores[args.generador])
     else:
         graficar_barras(numeros, nombres_generadores[args.generador])
-    
+    graficar_scatter_2d(numeros, nombres_generadores[args.generador])
+    graficar_kolmogorov_smirnov(numeros, nombres_generadores[args.generador])
+    graficar_cusum(numeros, nombres_generadores[args.generador])
+
     # Ejecucion de pruebas estadísticas
-    chi_stat, p_valor_chi = prueba_chi_cuadrado(numeros, bins=generar_bins_0_1() if args.generador != 'ro' else np.arange(1, 12))    
+    bins = generar_bins_0_1() if args.generador != 'ro' else np.arange(1, 11)
+
+    chi_stat, p_valor_chi = prueba_chi_cuadrado(numeros, bins=bins)
     z_stat, p_valor = prueba_rachas(numeros)
+    d_stat, p_valor_ks = prueba_kolmogorov_smirnov(numeros)
+    p_valor_series, _ = prueba_series(numeros)
+    p_valor_cusum, _ = prueba_cusum(numeros)
     nivel_significancia = 0.05
 
-    headers = ["Generador", "Tipo de generador", "Test Chi-cuadrado", "p-valor Chi-cuadrado", "Test Rachas", "p-valor Rachas"]
-    data = [[nombres_generadores[args.generador], "PseudoAleatorio" if args.generador != 'ro' else "Aleatorio", f"{chi_stat:.4f}", f"{p_valor_chi:.4f}", f"{z_stat:.4f}", f"{p_valor:.4f}"]]
-    print(tabulate(data, headers=headers, tablefmt="grid"))
+    headers_pvalues = ["Generador", "p-valor Chi-cuadrado", "p-valor Rachas", "p-valor Kolmogorov-Smirnov", "p-valor Series", "p-valor CUSUM"]
+    data_pvalues = [[nombres_generadores[args.generador], f"{p_valor_chi:.4f}", f"{p_valor:.4f}", f"{p_valor_ks:.4f}", f"{p_valor_series:.4f}", f"{p_valor_cusum:.4f}"]]
+    
+    headers_resultados = ["Generador", "Chi-cuadrado", "Rachas", "Kolmogorov-Smirnov", "Series", "CUSUM"]
+    data_results = [[nombres_generadores[args.generador], f"{'OK' if p_valor_chi > nivel_significancia else 'ERROR'}", f"{'OK' if p_valor > nivel_significancia else 'ERROR'}", f"{'OK' if p_valor_ks > nivel_significancia else 'ERROR'}", f"{'OK' if p_valor_series > nivel_significancia else 'ERROR'}", f"{'OK' if p_valor_cusum > nivel_significancia else 'ERROR'}"]]
+    print(tabulate(data_pvalues, headers=headers_pvalues, tablefmt="grid"))
+    print(tabulate(data_results, headers=headers_resultados, tablefmt="grid"))
