@@ -58,6 +58,12 @@
 \end{abstract}
 
 \section{Introducción}
+En simulación es fundamental disponer de secuencias de números aleatorios que permitan modelar fenómenos inciertos. Debido a que las computadoras son sistemas determinísticos, generalmente se utilizan generadores de números pseudoaleatorios, los cuales producen secuencias que intentan imitar el comportamiento de números verdaderamente aleatorios.
+
+El objetivo de este trabajo es implementar y analizar distintos generadores de números pseudoaleatorios, comparando su comportamiento mediante pruebas estadísticas de uniformidad e independencia. Además, se incluye una comparación con números aleatorios reales obtenidos mediante la plataforma Random.org.
+
+Para evaluar la calidad de los generadores se aplicaron pruebas estadísticas como Chi-Cuadrado y Rachas, complementadas con representaciones gráficas que permiten identificar patrones y posibles deficiencias en las secuencias generadas.
+
 
 
 \section{Desarrollo Teórico y Metodología de Validación}
@@ -94,8 +100,10 @@ $$X_{n+1} = (aX_n + c) \mod m$$
 donde $a$ es el multiplicador, $c$ es el incremento, $m$ es el módulo y $X_0$ es la semilla inicial. Para este trabajo se han seleccionado los parámetros $a = 25214903917$, $c = 11$, $m = 2^{48}$ y $X_0 = 0$, los cuales se presentan como los valores para el generador de números aleatorios default \textit{java.util.Random} en dicho material.
 
 \textbf{Generador de Parte Media del Cuadrado.}
+Este método fue propuesto por John von Neumann y consiste en elevar al cuadrado una semilla numérica y extraer los dígitos centrales del resultado para formar la nueva semilla.
 
-Este método se basa en la idea de tomar el cuadrado de un número y extraer la parte media de los dígitos resultantes para generar el siguiente número en la secuencia.
+Aunque históricamente tuvo importancia en los primeros estudios sobre generación de números pseudoaleatorios, presenta limitaciones importantes debido a la aparición de ciclos cortos y convergencia hacia valores repetidos.
+
 Para este trabajo se ha implementado una versión que utiliza números de 4 dígitos, siguiendo la fórmula:
 $$X_{n+1} = \text{parte media de } (X_n)^2$$
 donde $X_n$ es el número actual en la secuencia. Se han seleccionado distintas semillas iniciales para experimentar el comportamiento del mismo y se detalla:
@@ -104,7 +112,9 @@ $X_0 = 3972$ genera una secuencia con un período relativamente largo, mientras 
 \textbf{RANDU.}
 
 Este generador es un caso particular del GCL con parámetros específicos: $a = 65539$, $c = 0$ y $m = 2^{31}$.
-A pesar de su simplicidad, RANDU es conocido por su pobre calidad estadística, ya que genera secuencias con patrones predecibles y una distribución no uniforme. Se ha implementado este generador para ilustrar la importancia de seleccionar parámetros adecuados en los algoritmos de generación de números pseudoaleatorios.
+A pesar de su simplicidad y de haber sido ampliamente utilizado en la década de 1960, RANDU es conocido por su pobre calidad estadística, ya que genera secuencias con patrones predecibles y una distribución no uniforme.
+
+Se ha implementado este generador para ilustrar la importancia de seleccionar parámetros adecuados en los algoritmos de generación de números pseudoaleatorios.
 
 En adición a estos generadores, se ha incluido el generador de números aleatorios nativo de Python, que utiliza el algoritmo Mersenne Twister, conocido por su alta calidad estadística y amplio período. Este generador se implementa mediante la función \texttt{random.random()} del módulo \texttt{random} de Python.
 
