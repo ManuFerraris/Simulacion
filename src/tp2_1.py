@@ -158,6 +158,33 @@ def prueba_series(numeros: List[float]) -> tuple[float, float]:
 
     return statistic, pvalue
 
+def prueba_series_discreta(numeros: List[int]) -> tuple[float, float]:
+    """
+    Realiza la prueba de series para números enteros discretos (1 a 10).
+    Utiliza una matriz de contigencia de 10x10 para evaluar la independencia.
+    """
+    # 1. Crear una matriz de 10x10 para contar las transiciones
+    # La fila es el número actual, la columna es el número siguiente
+    matriz_transicion = np.zeros((10, 10), dtype=int)
+    
+    for i in range(len(numeros) - 1):
+        actual = numeros[i] - 1    # Restamos 1 para que el rango sea 0-9
+        siguiente = numeros[i+1] - 1
+        matriz_transicion[actual, siguiente] += 1
+        
+    # 2. Total de pares observados
+    num_pairs = len(numeros) - 1
+    
+    # 3. Frecuencia esperada: Cada una de las 100 celdas (10x10) 
+    # tiene la misma probabilidad teórica si son independientes
+    expected_val = num_pairs / 100.0
+    
+    # 4. Test Chi-cuadrado
+    statistic, pvalue = stats.chisquare(f_obs=matriz_transicion.flatten(), 
+                                        f_exp=np.full(100, expected_val))
+
+    return statistic, pvalue
+
 def prueba_chi_cuadrado(numeros: List[float], bins: np.ndarray) -> tuple[float, float]:
     """
     Realiza la prueba de chi-cuadrado para evaluar la uniformidad de los números generados.
@@ -182,6 +209,27 @@ def prueba_chi_cuadrado(numeros: List[float], bins: np.ndarray) -> tuple[float, 
     esperados: np.ndarray = np.full(len(observados), n / len(observados))
 
     statistic, pvalue = stats.chisquare(f_obs=observados, f_exp=esperados)
+    return statistic, pvalue
+
+def prueba_chi_cuadrado_discreta(numeros: List[int]) -> tuple[float, float]:
+    """
+    Realiza el test de Chi-cuadrado para valores enteros (discretos) 
+    en un rango del 1 al 10.
+    """
+    # 1. Contar frecuencias de cada número del 1 al 10.
+    # bincount cuenta las apariciones de cada entero. 
+    # [1:] descarta el índice 0 que no nos interesa.
+    conteo = np.bincount(numeros, minlength=11)[1:]
+    
+    # 2. Total de elementos
+    n = len(numeros)
+    
+    # 3. La frecuencia esperada bajo uniformidad es n/10 para cada categoría
+    esperados = np.full(10, n / 10)
+    
+    # 4. Ejecutar el test
+    statistic, pvalue = stats.chisquare(f_obs=conteo, f_exp=esperados)
+    
     return statistic, pvalue
 
 def prueba_rachas(numeros: List[float]) -> tuple[float, float]:
@@ -381,8 +429,7 @@ if __name__ == "__main__":
     elif args.generador == 'r':
         numeros = randu(dimension_grilla)
     elif args.generador == 'ro':
-        numeros = generador_random_org(args.ladoGrilla)
-
+        numeros = generador_random_org(dimension_grilla)
     if args.generador != 'ro':
         graficar_bitmap(numeros, f"Generador {nombres_generadores[args.generador]}")
         graficar_histograma(numeros, nombres_generadores[args.generador])
@@ -395,11 +442,11 @@ if __name__ == "__main__":
     # Ejecucion de pruebas estadísticas
     bins = generar_bins_0_1() if args.generador != 'ro' else np.arange(1, 11)
 
-    chi_stat, p_valor_chi = prueba_chi_cuadrado(numeros, bins=bins)
+    chi_stat, p_valor_chi = prueba_chi_cuadrado(numeros, bins=bins) if args.generador != 'ro' else prueba_chi_cuadrado_discreta(numeros)
     z_stat, p_valor = prueba_rachas(numeros)
     d_stat, p_valor_ks = prueba_kolmogorov_smirnov(numeros)
-    p_valor_series, _ = prueba_series(numeros)
-    p_valor_cusum, _ = prueba_cusum(numeros)
+    series_stat, p_valor_series = prueba_series(numeros) if args.generador != 'ro' else prueba_series_discreta(numeros)
+    cusum_stat, p_valor_cusum = prueba_cusum(numeros)
     nivel_significancia = 0.05
 
     headers_pvalues = ["Generador", "p-valor Chi-cuadrado", "p-valor Rachas", "p-valor Kolmogorov-Smirnov", "p-valor Series", "p-valor CUSUM"]
