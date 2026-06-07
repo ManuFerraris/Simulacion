@@ -1,4 +1,5 @@
 import argparse
+import random
 from typing import Dict, List
 
 # Consignas de desarrollo
@@ -11,15 +12,15 @@ class Distribucion:
         self.label = label
 
 distribuciones: Dict[str, Distribucion] = {
-    'uniforme': Distribucion(nombre='Distribución Uniforme', label='uniforme'),
-    'exponencial': Distribucion(nombre='Distribución Exponencial', label='exponencial'),
-    'gamma': Distribucion(nombre='Distribución Gamma', label='gamma'),
-    'normal': Distribucion(nombre='Distribución Normal', label='normal'),
-    'pascal': Distribucion(nombre='Distribución Pascal', label='pascal'),
-    'binomial': Distribucion(nombre='Distribución Binomial', label='binomial'),
-    'hipergeometrica': Distribucion(nombre='Distribución Hipergeométrica', label='hipergeometrica'),
-    'poisson': Distribucion(nombre='Distribución Poisson', label='poisson'),
-    'empirica_discreta': Distribucion(nombre='Distribución Empírica Discreta', label='empirica_discreta')
+    'uniforme': Distribucion(nombre='Distribución Uniforme', label='u'),
+    'exponencial': Distribucion(nombre='Distribución Exponencial', label='e'),
+    'gamma': Distribucion(nombre='Distribución Gamma', label='g'),
+    'normal': Distribucion(nombre='Distribución Normal', label='m'),
+    'pascal': Distribucion(nombre='Distribución Pascal', label='p'),
+    'binomial': Distribucion(nombre='Distribución Binomial', label='b'),
+    'hipergeometrica': Distribucion(nombre='Distribución Hipergeométrica', label='h'),
+    'poisson': Distribucion(nombre='Distribución Poisson', label='po'),
+    'empirica_discreta': Distribucion(nombre='Distribución Empírica Discreta', label='ed')
 }
 
 
@@ -29,8 +30,16 @@ distribuciones: Dict[str, Distribucion] = {
 ## los argumentos los generó COPILOT, no aseguro que estén bien.
 ## Se deben revisar las definiciones teóricas de cada distribución
 
-def generador_valores_uniforme(a, b, n):
-    pass
+def generador_valores_uniforme(a: float, b: float, n: int):
+    """    
+    1. SUBROUTINE UNIFORM (A,B,X)
+    2. R = RND (R)
+    3. X= A+(B-A)*R
+    3. RETURN
+    """
+    r = [random.random() for _ in range(n)]
+    x: List[float] = [a + (b - a) * r_i for r_i in r]
+    return x
 
 def generador_valores_exponencial(lambda_param, n):
     pass
@@ -62,3 +71,8 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--observaciones', type=int, required=True, help="Número de observaciones a generar")
     
     args: argparse.Namespace = parser.parse_args()
+    if(args.distribucion == distribuciones['uniforme'].label):
+        a = float(input("Ingrese el valor de a: "))
+        b = float(input("Ingrese el valor de b: "))
+        valores = generador_valores_uniforme(a, b, args.observaciones)
+        print(valores)
