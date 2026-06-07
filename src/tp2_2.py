@@ -41,28 +41,28 @@ def generador_valores_uniforme(a: float, b: float, n: int):
     x: List[float] = [a + (b - a) * r_i for r_i in r]
     return x
 
-def generador_valores_exponencial(lambda_param, n):
+def generador_valores_exponencial(lambda_param: float, n: int):
     pass
 
-def generador_valores_gamma(alpha, beta, n):
+def generador_valores_gamma(alpha: float, beta: float, n: int):
     pass
 
-def generador_valores_normal(mu, sigma, n):
+def generador_valores_normal(mu: float, sigma: float, n: int):
     pass
 
-def generador_valores_pascal(r, p, n):
+def generador_valores_pascal(r: int, p: float, n: int):
     pass
 
-def generador_valores_binomial(n, p, n_samples):
+def generador_valores_binomial(n: int, p: float, n_samples: int):
     pass
 
-def generador_valores_hipergeometrica(N, K, n, n_samples):
+def generador_valores_hipergeometrica(N: int, K: int, n: int, n_samples: int):
     pass
 
-def generador_valores_poisson(lambda_param, n):
+def generador_valores_poisson(lambda_param: float, n: int):
     pass
 
-def generador_valores_empirica_discreta(probabilidades, n):
+def generador_valores_empirica_discreta(probabilidades: List[float], n: int):
     pass
 
 if __name__ == "__main__":
@@ -74,5 +74,5 @@ if __name__ == "__main__":
     if(args.distribucion == distribuciones['uniforme'].label):
         a = float(input("Ingrese el valor de a: "))
         b = float(input("Ingrese el valor de b: "))
-        valores = generador_valores_uniforme(a, b, args.observaciones)
+        valores: List[float] = generador_valores_uniforme(a, b, args.observaciones)
         print(valores)
