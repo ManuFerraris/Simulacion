@@ -1,4 +1,5 @@
 import argparse
+import math
 import random
 from typing import Dict, List
 
@@ -42,7 +43,15 @@ def generador_valores_uniforme(a: float, b: float, n: int):
     return x
 
 def generador_valores_exponencial(lambda_param: float, n: int):
-    pass
+    """
+    C   SUBROUTINE EXPENT (EX, X)
+    R = RND(R)
+    X = -EX * LOG(R)
+    RETURN
+    """
+    r: List[float] = [random.random() for _ in range(n)] 
+    x: List[float] = [-lambda_param * math.log(r_i) for r_i in r]
+    return x
 
 def generador_valores_gamma(alpha: float, beta: float, n: int):
     pass
@@ -71,8 +80,12 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--observaciones', type=int, required=True, help="Número de observaciones a generar")
     
     args: argparse.Namespace = parser.parse_args()
-    if(args.distribucion == distribuciones['uniforme'].label):
+    if args.distribucion == distribuciones['uniforme'].label:
         a = float(input("Ingrese el valor de a: "))
         b = float(input("Ingrese el valor de b: "))
         valores: List[float] = generador_valores_uniforme(a, b, args.observaciones)
+        print(valores)
+    elif args.distribucion == distribuciones['exponencial'].label:
+        lambda_param = float(input("Ingrese el valor de lambda: "))
+        valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)
         print(valores)
