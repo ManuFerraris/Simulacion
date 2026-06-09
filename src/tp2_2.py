@@ -31,7 +31,7 @@ distribuciones: Dict[str, Distribucion] = {
 ## los argumentos los generó COPILOT, no aseguro que estén bien.
 ## Se deben revisar las definiciones teóricas de cada distribución
 
-def generador_valores_uniforme(a: float, b: float, n: int):
+def generador_valores_uniforme(a: float, b: float, n: int) -> List[float]:
     """    
     1. SUBROUTINE UNIFORM (A,B,X)
     2. R = RND (R)
@@ -42,7 +42,7 @@ def generador_valores_uniforme(a: float, b: float, n: int):
     x: List[float] = [a + (b - a) * r_i for r_i in r]
     return x
 
-def generador_valores_exponencial(lambda_param: float, n: int):
+def generador_valores_exponencial(lambda_param: float, n: int) -> List[float]:
     """
     C   SUBROUTINE EXPENT (EX, X)
     R = RND(R)
@@ -50,11 +50,17 @@ def generador_valores_exponencial(lambda_param: float, n: int):
     RETURN
     """
     r: List[float] = [random.random() for _ in range(n)] 
-    x: List[float] = [-lambda_param * math.log(r_i) for r_i in r]
+    x: List[float] = [-math.log(r_i) / lambda_param for r_i in r]
     return x
 
-def generador_valores_gamma(alpha: float, beta: float, n: int):
-    pass
+def generador_valores_gamma(alpha: int, beta: float, n: int) -> List[float]:
+    tr: List[float] = [1.0 for _ in range(n)]
+    x: List[float] = []
+    for i in range(0, n):
+        for j in range(0, int(alpha)):
+            tr[i] = (tr[i] * random.random())
+        x.append(-math.log(tr[i]) / beta)
+    return x
 
 def generador_valores_normal(mu: float, sigma: float, n: int):
     pass
@@ -88,4 +94,9 @@ if __name__ == "__main__":
     elif args.distribucion == distribuciones['exponencial'].label:
         lambda_param = float(input("Ingrese el valor de lambda: "))
         valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)
+        print(valores)
+    elif args.distribucion == distribuciones['gamma'].label:
+        alpha = int(input("Ingrese el valor de alpha: "))
+        beta = float(input("Ingrese el valor de beta: "))
+        valores: List[float] = generador_valores_gamma(alpha, beta, args.observaciones)
         print(valores)
