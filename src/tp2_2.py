@@ -18,7 +18,7 @@ distribuciones: Dict[str, Distribucion] = {
     'uniforme': Distribucion(nombre='Distribución Uniforme', label='u'),
     'exponencial': Distribucion(nombre='Distribución Exponencial', label='e'),
     'gamma': Distribucion(nombre='Distribución Gamma', label='g'),
-    'normal': Distribucion(nombre='Distribución Normal', label='m'),
+    'normal': Distribucion(nombre='Distribución Normal', label='n'),
     'pascal': Distribucion(nombre='Distribución Pascal', label='p'),
     'binomial': Distribucion(nombre='Distribución Binomial', label='b'),
     'hipergeometrica': Distribucion(nombre='Distribución Hipergeométrica', label='h'),
@@ -64,8 +64,21 @@ def generador_valores_gamma(alpha: int, beta: float, n: int) -> List[float]:
         x.append(-math.log(tr[i]) / beta)
     return x
 
-def generador_valores_normal(mu: float, sigma: float, n: int):
-    pass
+def generador_valores_normal(mu: float, sigma: float, n: int) -> List[float]:
+    """
+    SUBROUTINE NORMAL (EX, VX, X)
+    SUM = 0
+    DO 10 I = 1, 12
+    10 SUM = SUM + RND(R)
+    X = EX + (SUM - 6.0) * STDX(VX)
+    RETURN
+    """
+    x: List[float] = [0 for i in range(0,n)]
+    for j in range(0, n):
+        for _ in range(0, 11):
+            x[j] = x[j] + random.random()
+        x[j] = mu + (x[j] - 6) * sigma
+    return x
 
 def generador_valores_pascal(r: int, p: float, n: int):
     pass
@@ -230,3 +243,7 @@ if __name__ == "__main__":
         beta = float(input("Ingrese el valor de beta: "))
         valores: List[float] = generador_valores_gamma(alpha, beta, args.observaciones)
         print(valores)
+    elif args.distribucion == distribuciones['normal'].label:
+        mu = int(input("Ingrese el valor de mu: "))
+        sigma = float(input("Ingrese el valor de sigma: "))
+        valores: List[float] = generador_valores_normal(mu, sigma, args.observaciones)
