@@ -5,6 +5,7 @@ from typing import Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import bisect
+from scipy.stats import norm
 
 # Consignas de desarrollo
 # Elaborar un programa por cada distribución de probabilidad en lenguaje Python 3.x.
@@ -34,6 +35,8 @@ distribucion_empirica_discreta: list[tuple[int, float]] = [(1, 0.1), (2, 0.3), (
 ## los argumentos los generó COPILOT, no aseguro que estén bien.
 ## Se deben revisar las definiciones teóricas de cada distribución
 
+
+# =================== Generadores mediante transformada inversa ===================
 def generador_valores_uniforme(a: float, b: float, n: int) -> List[float]:
     """    
     1. SUBROUTINE UNIFORM (A,B,X)
@@ -122,6 +125,69 @@ def generador_valores_empirica_discreta(valores: List[tuple[int, float]], n: int
         resultados.append(valores_discretos[indice])
     
     return resultados
+
+# =================== Generadores mediante transformada inversa ===================
+
+# =================== Generadores mediante método de rechazo ===================
+
+def f_normal(MU: float, SIGMA: float):
+    """Normal con parámetros MU y SIGMA."""
+    return lambda x : norm.pdf(x, loc=MU, scale=SIGMA)
+
+def rejection_sampling_normal(n: int, MU: float, SIGMA: float, A: float, B: float, rng=None):
+    """
+    Genera n muestras de f(x) ~ Normal(MU, SIGMA) por método del rechazo.
+
+    Parámetros
+    ----------
+    n         : cantidad de muestras deseadas
+    MU, SIGMA : parametros mu y sigma "reales" de la distribución normal
+    a,b       : dominio [a, b] donde se buscan candidatos
+    rng       : numpy Generator (semilla reproducible)
+
+    Retorna
+    -------
+    accepted_points : Lista de tuplas (x, r2) de puntos aceptados
+    rejected_points : Lista de tuplas (x, r2) de puntos rechazados
+    n_tries         : total de intentos realizados  (para calcular eficiencia)
+    """
+    funcion_normal = f_normal(MU, SIGMA)
+    C: float = 1.0 / funcion_normal(MU)   # = σ√2π  (factor de escala)
+        
+    # ─── Constante de escalado c ────────────────────────────────────────────
+    #
+    #   Necesitamos  c · f(x) ≤ 1  para todo x ∈ [A, B].
+    #   El máximo de f(x) es f(μ) = 1 / (σ√2π).
+    #   Por lo tanto  c = 1 / f(μ) = σ√2π.
+    #   Así  c · f(x) ∈ (0, 1]  y podemos compararlo con r₂ ~ U(0,1).
+    #
+
+    if rng is None:
+        rng = np.random.default_rng(seed=42)
+
+    accepted_points: List[tuple[float, float]] = []
+    rejected_points: List[tuple[float, float]] = []
+    accepted: int = 0
+    n_tries: int  = 0
+
+    while accepted < n:
+        # Paso 1 – proponer candidato uniforme en [a, b]
+        r1: float = rng.uniform(0.0, 1.0)
+        x_candidate: float = A + (B - A) * r1
+
+        # Paso 2 – criterio de aceptación
+        r2: float = rng.uniform(0.0, 1.0)
+
+        if r2 <= C * funcion_normal(x_candidate):
+            accepted_points.append((x_candidate, r2))            
+            accepted += 1
+        else:
+            rejected_points.append((x_candidate, r2))
+        n_tries += 1
+
+    return accepted_points, rejected_points, n_tries
+
+# =================== Generadores mediante método de rechazo ===================
 
 # Graficos
 def graficar_exponencial(lambda_param: float, valores_generados: List[float]):
@@ -249,6 +315,55 @@ def graficar_uniforme(a_param: float, b_param: float, valores_generados: List[fl
     
     plt.savefig('generador_uni.png', dpi=300, bbox_inches='tight')
     plt.show()
+
+def graficar_normal(puntos_aceptados: List[tuple[float, float]], puntos_rechazados: List[tuple[float, float]], intentos: int, MU_TEORICO: float, SIGMA_TEORICO: float, A: float, B: float):
+    funcion_normal = f_normal(MU_TEORICO, SIGMA_TEORICO)
+    C = 1.0 / funcion_normal(MU_TEORICO)   # = σ√2π  (factor de escala)        
+
+    accepted_x  = [p[0] for p in puntos_aceptados]
+    accepted_r2 = [p[1] for p in puntos_aceptados]
+
+    rejected_x  = [p[0] for p in puntos_rechazados]
+    rejected_r2 = [p[1] for p in puntos_rechazados]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # — Histograma vs. densidad teórica
+    ax = axes[0]
+    ax.hist(accepted_x, bins="auto", density=True, alpha=0.65, label="Muestras")
+    xs = np.linspace(A, B)
+    ax.plot(xs, norm.pdf(xs, MU_TEORICO, SIGMA_TEORICO), lw=1.5, label="Normal teórica")
+    ax.set_title("Histograma vs. densidad teórica")
+    ax.set_xlabel("x"); ax.set_ylabel("Densidad")
+    ax.legend()
+
+    ax2 = axes[1]
+
+    ax2.scatter(
+        accepted_x,
+        accepted_r2,
+        s=8,
+        alpha=0.7,
+        label="Aceptado"
+    )
+
+    ax2.scatter(
+        rejected_x,
+        rejected_r2,
+        s=8,
+        alpha=0.4,
+        label="Rechazado"
+    )
+
+    ax2.plot(xs, C * norm.pdf(xs, MU_TEORICO, SIGMA_TEORICO), lw=1.5, label="c · f(x)  (frontera)")
+    ax2.set_title("Geometría del método del rechazo")
+    ax2.set_xlabel("x (candidato r₁)")
+    ax2.set_ylabel("r₂  (criterio)")
+    ax2.legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig("rechazo_normal.png", dpi=150)
+    plt.show()
 # 
 
 if __name__ == "__main__":
@@ -275,5 +390,9 @@ if __name__ == "__main__":
         mu = int(input("Ingrese el valor de mu: "))
         sigma = float(input("Ingrese el valor de sigma: "))
         valores: List[float] = generador_valores_normal(mu, sigma, args.observaciones)
+        A = mu - 4 * sigma   # límite inferior
+        B = mu + 4 * sigma   # límite superior
+        accepted_points, rejected_points, intentos = rejection_sampling_normal(args.observaciones, mu, sigma, A, B)
+        graficar_normal(accepted_points, rejected_points, intentos, mu, sigma, A, B)
     elif args.distribucion == distribuciones['empirica_discreta'].label:
         valores: List[int] = generador_valores_empirica_discreta(distribucion_empirica_discreta, args.observaciones)
