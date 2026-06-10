@@ -4,6 +4,7 @@ import random
 from typing import Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
+import bisect
 
 # Consignas de desarrollo
 # Elaborar un programa por cada distribución de probabilidad en lenguaje Python 3.x.
@@ -26,7 +27,7 @@ distribuciones: Dict[str, Distribucion] = {
     'empirica_discreta': Distribucion(nombre='Distribución Empírica Discreta', label='ed')
 }
 
-
+distribucion_empirica_discreta: list[tuple[int, float]] = [(1, 0.1), (2, 0.3), (3, 0.3), (4, 0.2), (5, 0.1)]
 
 
 ## IMPORTANTE 
@@ -92,8 +93,35 @@ def generador_valores_hipergeometrica(N: int, K: int, n: int, n_samples: int):
 def generador_valores_poisson(lambda_param: float, n: int):
     pass
 
-def generador_valores_empirica_discreta(probabilidades: List[float], n: int):
-    pass
+def generador_valores_empirica_discreta(valores: List[tuple[int, float]], n: int):
+    
+    acumuladas: list[float] = []
+    valores_discretos: int = []
+    suma = 0.0
+    
+    for valor, prob in valores:
+        if prob < 0:
+            raise ValueError("Las probabilidades no pueden ser negativas.")
+        
+        suma += prob
+        acumuladas.append(suma)
+        valores_discretos.append(valor)
+    
+    if not abs(suma - 1.0) < 1e-9:
+        raise ValueError(
+            f"La suma de probabilidades debe ser 1. Suma actual: {suma}"
+        )
+    
+    acumuladas[-1] = 1.0
+    
+    resultados: List[int] = []
+    
+    for _ in range(n):
+        r: float = random.random()
+        indice: int = bisect.bisect_left(acumuladas, r)
+        resultados.append(valores_discretos[indice])
+    
+    return resultados
 
 # Graficos
 def graficar_exponencial(lambda_param: float, valores_generados: List[float]):
@@ -247,3 +275,5 @@ if __name__ == "__main__":
         mu = int(input("Ingrese el valor de mu: "))
         sigma = float(input("Ingrese el valor de sigma: "))
         valores: List[float] = generador_valores_normal(mu, sigma, args.observaciones)
+    elif args.distribucion == distribuciones['empirica_discreta'].label:
+        valores: List[int] = generador_valores_empirica_discreta(distribucion_empirica_discreta, args.observaciones)
