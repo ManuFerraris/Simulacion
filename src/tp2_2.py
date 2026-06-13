@@ -5,8 +5,9 @@ from typing import Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import bisect
-from scipy.stats import norm
+from scipy.stats import norm, expon
 
+SEED_DEFAULT = 42
 # Consignas de desarrollo
 # Elaborar un programa por cada distribución de probabilidad en lenguaje Python 3.x.
 # Testear la generación de valores de la forma más conveniente para cada caso (queda a criterio del grupo el como testear). # -- como adicional, yo, compararía contra alguna librería que genere esos valores.
@@ -163,7 +164,7 @@ def rejection_sampling_normal(n: int, MU: float, SIGMA: float, A: float, B: floa
     #
 
     if rng is None:
-        rng = np.random.default_rng(seed=42)
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
 
     accepted_points: List[tuple[float, float]] = []
     rejected_points: List[tuple[float, float]] = []
@@ -185,6 +186,100 @@ def rejection_sampling_normal(n: int, MU: float, SIGMA: float, A: float, B: floa
             rejected_points.append((x_candidate, r2))
         n_tries += 1
 
+    return accepted_points, rejected_points, n_tries
+
+
+def rejection_sampling_uniform():
+    pass
+
+def f_exp(lambda_param):
+    """
+    Densidad Exponencial de parámetro lambda.
+
+    f(x) = lambda * exp(-lambda*x), x >= 0
+    """
+    return lambda x: expon.pdf(x, scale=1.0 / lambda_param)
+
+def rejection_sampling_exponential(
+    n: int,
+    LAMBDA: float,
+    A: float,
+    B: float,
+    rng=None):    
+    """
+    Genera n muestras de una Exponencial(lambda)
+    mediante el método del rechazo.
+
+    Parámetros
+    ----------
+    n       : cantidad de muestras deseadas
+    LAMBDA  : parámetro de la exponencial
+    A, B    : intervalo de búsqueda de candidatos
+    rng     : generador aleatorio opcional
+
+    Retorna
+    -------
+    accepted_points : puntos aceptados (x, r2)
+    rejected_points : puntos rechazados (x, r2)
+    n_tries         : cantidad total de intentos
+    """
+
+    funcion_exponencial = f_exp(LAMBDA)
+
+    # ────────────────────────────────────────────────
+    # Escalado:
+    #
+    # max f(x) = f(0) = lambda
+    #
+    # Queremos:
+    #      C * f(x) <= 1
+    #
+    # Entonces:
+    #      C = 1/lambda
+    #
+    # y queda:
+    #      C*f(x)=exp(-lambda*x)
+    # ────────────────────────────────────────────────
+
+    C: float = 1.0 / funcion_exponencial(0.0)
+
+    if rng is None:
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
+
+    accepted_points: List[tuple[float, float]] = []
+    rejected_points: List[tuple[float, float]] = []
+
+    accepted: int = 0
+    n_tries: int = 0
+
+    while accepted < n:
+        # Paso 1:
+        # Generar candidato uniforme en [A,B]
+        r1: float = rng.uniform(0.0, 1.0)
+
+        x_candidate: float = A + (B - A) * r1
+
+        # Paso 2:
+        # Generar altura aleatoria uniforme
+        r2: float = rng.uniform(0.0, 1.0)
+
+        # Paso 3:
+        # Aceptar si el punto cae debajo de
+        # la curva escalada C*f(x)
+        if r2 <= C * funcion_exponencial(x_candidate):
+
+            accepted_points.append(
+                (x_candidate, r2)
+            )
+
+            accepted += 1
+        else:
+
+            rejected_points.append(
+                (x_candidate, r2)
+            )
+
+        n_tries += 1
     return accepted_points, rejected_points, n_tries
 
 # =================== Generadores mediante método de rechazo ===================
@@ -364,6 +459,127 @@ def graficar_normal(puntos_aceptados: List[tuple[float, float]], puntos_rechazad
     plt.tight_layout()
     plt.savefig("rechazo_normal.png", dpi=150)
     plt.show()
+
+def graficar_rechazo_uniforme():
+    pass
+
+def graficar_rechazo_exponencial(
+    puntos_aceptados: List[tuple[float, float]],
+    puntos_rechazados: List[tuple[float, float]],
+    intentos: int,
+    LAMBDA_TEORICO: float,
+    A: float,
+    B: float):
+    """
+    Grafica:
+
+    1) Histograma de muestras aceptadas
+       vs densidad exponencial teórica
+
+    2) Geometría del método del rechazo
+    """
+
+    funcion_exponencial = f_exp(LAMBDA_TEORICO)
+
+    C: float = 1.0 / funcion_exponencial(0.0)
+
+    accepted_x = [p[0] for p in puntos_aceptados]
+    accepted_r2 = [p[1] for p in puntos_aceptados]
+
+    rejected_x = [p[0] for p in puntos_rechazados]
+    rejected_r2 = [p[1] for p in puntos_rechazados]
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 5)
+    )
+
+    # ------------------------------------------------
+    # Histograma vs densidad teórica
+    # ------------------------------------------------
+
+    ax = axes[0]
+
+    ax.hist(
+        accepted_x,
+        bins="auto",
+        density=True,
+        alpha=0.65,
+        label="Muestras"
+    )
+
+    xs = np.linspace(A, B, 500)
+
+    ax.plot(
+        xs,
+        expon.pdf(xs, scale=1.0 / LAMBDA_TEORICO),
+        lw=1.5,
+        label="Exponencial teórica"
+    )
+
+    ax.set_title(
+        "Histograma vs. densidad teórica"
+    )
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("Densidad")
+    ax.legend()
+
+    # ------------------------------------------------
+    # Geometría del rechazo
+    # ------------------------------------------------
+
+    ax2 = axes[1]
+
+    ax2.scatter(
+        accepted_x,
+        accepted_r2,
+        s=8,
+        alpha=0.7,
+        label="Aceptado"
+    )
+
+    ax2.scatter(
+        rejected_x,
+        rejected_r2,
+        s=8,
+        alpha=0.4,
+        label="Rechazado"
+    )
+
+    ax2.plot(
+        xs,
+        C * expon.pdf(
+            xs,
+            scale=1.0 / LAMBDA_TEORICO
+        ),
+        lw=1.5,
+        label="c · f(x) (frontera)"
+    )
+
+    ax2.set_title(
+        "Geometría del método del rechazo"
+    )
+
+    ax2.set_xlabel(
+        "x (candidato r₁)"
+    )
+
+    ax2.set_ylabel(
+        "r₂ (criterio)"
+    )
+
+    ax2.legend(fontsize=8)
+
+    plt.tight_layout()
+
+    plt.savefig(
+        "rechazo_exponencial.png",
+        dpi=150
+    )
+
+    plt.show()
 # 
 
 if __name__ == "__main__":
@@ -381,6 +597,13 @@ if __name__ == "__main__":
         lambda_param = float(input("Ingrese el valor de lambda: "))
         valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)
         graficar_exponencial(lambda_param, valores)
+        
+        # Metodo rechazo
+        A: float = 0.0
+        B: float = 10.0 / lambda_param
+        
+        accepted_points, rejected_points, intentos = rejection_sampling_exponential(args.observaciones, lambda_param, A, B)
+        graficar_rechazo_exponencial(accepted_points, rejected_points, intentos, lambda_param, A, B)
     elif args.distribucion == distribuciones['gamma'].label:
         alpha = int(input("Ingrese el valor de alpha: "))
         beta = float(input("Ingrese el valor de beta: "))
