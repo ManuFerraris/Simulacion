@@ -1,7 +1,7 @@
 import argparse
 import math
 import random
-from typing import Dict, List
+from typing import Dict, Generator, List
 import matplotlib.pyplot as plt
 import numpy as np
 import bisect
@@ -283,6 +283,28 @@ def rejection_sampling_exponential(
     return accepted_points, rejected_points, n_tries
 
 # =================== Generadores mediante método de rechazo ===================
+
+# =================== Generadores mediante np random ===================
+def generador_np_normal(mu: float, sigma: float, n: int, rng:Generator | None = None) -> List[float]:
+    if rng is None:
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
+    np_valores = [rng.normal(mu, sigma) for _ in range(0, n)]
+    return np_valores
+
+def generador_np_uniforme(a: float, b: float, n: int, rng:Generator | None = None) -> List[float]:
+    if rng is None:
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
+    np_valores = [rng.uniform(a, b) for _ in range(0, n)]
+    return np_valores
+
+def generador_np_exponencial(scale: float, n: int, rng:Generator | None = None) -> List[float]:
+    if rng is None:
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
+    np_valores = [rng.exponential(scale) for _ in range(0, n)]
+    return np_valores
+# =================== Generadores mediante np random ===================
+
+
 
 # Graficos
 def graficar_exponencial(lambda_param: float, valores_generados: List[float]):
@@ -593,11 +615,12 @@ if __name__ == "__main__":
         b = float(input("Ingrese el valor de b: "))
         valores: List[float] = generador_valores_uniforme(a, b, args.observaciones)
         graficar_uniforme(a, b, valores)
+        valores_np: List[float] = generador_np_uniforme(a, b, args.observaciones)
     elif args.distribucion == distribuciones['exponencial'].label:
         lambda_param = float(input("Ingrese el valor de lambda: "))
-        valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)
+        valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)        
         graficar_exponencial(lambda_param, valores)
-        
+        valores_np: List[float] = generador_np_exponencial(1/lambda_param, args.observaciones)
         # Metodo rechazo
         A: float = 0.0
         B: float = 10.0 / lambda_param
@@ -617,5 +640,6 @@ if __name__ == "__main__":
         B = mu + 4 * sigma   # límite superior
         accepted_points, rejected_points, intentos = rejection_sampling_normal(args.observaciones, mu, sigma, A, B)
         graficar_normal(accepted_points, rejected_points, intentos, mu, sigma, A, B)
+        valores_np: List[float] = generador_np_normal(mu, sigma, args.observaciones)
     elif args.distribucion == distribuciones['empirica_discreta'].label:
         valores: List[int] = generador_valores_empirica_discreta(distribucion_empirica_discreta, args.observaciones)
