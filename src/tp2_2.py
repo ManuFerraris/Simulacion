@@ -88,8 +88,21 @@ def generador_valores_normal(mu: float, sigma: float, n: int) -> List[float]:
 def generador_valores_pascal(r: int, p: float, n: int):
     pass
 
-def generador_valores_binomial(n: int, p: float, n_samples: int):
-    pass
+def generador_valores_binomial(n: int, p: float, n_samples: int) -> List[int]:
+    results: List[int] = []
+
+    for _ in range(n_samples):
+        x: int = 0
+
+        for _ in range(n):
+            r: float = random.random()
+
+            if r <= p:
+                x += 1
+
+        results.append(x)
+
+    return results
 
 def generador_valores_hipergeometrica(N: int, K: int, n: int, n_samples: int):
     pass
@@ -643,3 +656,7 @@ if __name__ == "__main__":
         valores_np: List[float] = generador_np_normal(mu, sigma, args.observaciones)
     elif args.distribucion == distribuciones['empirica_discreta'].label:
         valores: List[int] = generador_valores_empirica_discreta(distribucion_empirica_discreta, args.observaciones)
+    elif args.distribucion == distribuciones['binomial'].label:
+        n = int(input("Ingrese el valor de n: "))
+        p = float(input("Ingrese el valor de p: "))
+        valores: List[float] = generador_valores_binomial(n, p, args.observaciones)
