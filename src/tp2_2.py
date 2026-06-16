@@ -462,6 +462,26 @@ def graficar_normal(puntos_aceptados: List[tuple[float, float]], puntos_rechazad
     ax = axes[0]
     ax.hist(accepted_x, bins="auto", density=True, alpha=0.65, label="Muestras")
     xs = np.linspace(A, B)
+
+    media_obtenida = np.mean(accepted_x)
+    desvio_obtenido = np.std(accepted_x)
+    info_text = (
+        f"Métricas Teóricas:\n"
+        f"  $\\mu$ (EX) = {MU_TEORICO:.4f}\n"
+        f"  $\\sigma$ (DX) = {SIGMA_TEORICO:.4f}\n\n"
+        f"Métricas Obtenidas:\n"
+        f"  Media = {media_obtenida:.4f}\n"
+        f"  Desvío = {desvio_obtenido:.4f}"
+    )
+
+    ax.text(
+        0.05, 0.90, info_text, 
+        transform=ax.transAxes, 
+        fontsize=10,
+        verticalalignment='top', 
+        horizontalalignment='left',
+        bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.8, edgecolor='gray')
+    )    
     ax.plot(xs, norm.pdf(xs, MU_TEORICO, SIGMA_TEORICO), lw=1.5, label="Normal teórica")
     ax.set_title("Histograma vs. densidad teórica")
     ax.set_xlabel("x"); ax.set_ylabel("Densidad")
@@ -560,6 +580,25 @@ def graficar_rechazo_exponencial(
     ax.set_xlabel("x")
     ax.set_ylabel("Densidad")
     ax.legend()
+
+    media_obtenida = np.mean(accepted_x)
+    desvio_obtenido = np.std(accepted_x)
+    info_text = (
+        f"Métricas Teóricas:\n"
+        f"  $\\mu$ (EX) = {(1/LAMBDA_TEORICO):.4f}\n"
+        f"  $\\sigma$ (DX) = {(1/LAMBDA_TEORICO):.4f}\n\n"
+        f"Métricas Obtenidas:\n"
+        f"  Media = {media_obtenida:.4f}\n"
+        f"  Desvío = {desvio_obtenido:.4f}"
+    )
+    ax.text(
+        0.95, 0.95, info_text, 
+        transform=ax.transAxes, 
+        fontsize=10,
+        verticalalignment='top', 
+        horizontalalignment='right',
+        bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.8, edgecolor='gray')
+    )
 
     # ------------------------------------------------
     # Geometría del rechazo
