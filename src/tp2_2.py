@@ -85,8 +85,20 @@ def generador_valores_normal(mu: float, sigma: float, n: int) -> List[float]:
         x[j] = mu + (x[j] - 6) * sigma
     return x
 
-def generador_valores_pascal(r: int, p: float, n: int):
-    pass
+#Agrego la definicion de la funcion de Pascal (Binomial Negativa)
+def generador_valores_pascal(k: int, p: float, n_muestras: int) -> List[int]:
+    """
+    Generador Pascal (Binomial Negativa).
+    Suma de variables geométricas mediante logaritmo de uniformes.
+    """
+    resultados: List[int] = []
+    for _ in range(n_muestras):
+        tr = 1.0
+        for _ in range(k):
+            tr *= random.random()
+        x = int(math.log(tr) / math.log(1 - p))
+        resultados.append(x)
+    return resultados
 
 def generador_valores_binomial(n: int, p: float, n_samples: int) -> List[int]:
     results: List[int] = []
@@ -104,11 +116,46 @@ def generador_valores_binomial(n: int, p: float, n_samples: int) -> List[int]:
 
     return results
 
-def generador_valores_hipergeometrica(N: int, K: int, n: int, n_samples: int):
-    pass
+# Agrego la definicion de la funcion de Hipergeometrica
+def generador_valores_hipergeometrica(N: int, K: int, n: int, n_muestras: int) -> List[int]:
+    """
+    Generador Hipergeométrico.
+    Simula extracciones sin reemplazo actualizando la probabilidad dinámicamente.
+    """
+    resultados: List[int] = []
+    for _ in range(n_muestras):
+        exitos = 0
+        poblacion_restante = N
+        k_restante = K
+        for _ in range(n):
+            if poblacion_restante == 0:
+                break
+            prob_exito = k_restante / poblacion_restante
+            if random.random() <= prob_exito:
+                exitos += 1
+                k_restante -= 1
+            poblacion_restante -= 1
+        resultados.append(exitos)
+    return resultados
 
-def generador_valores_poisson(lambda_param: float, n: int):
-    pass
+# Agrego la definicion de la funcion de Poisson
+def generador_valores_poisson(lambda_param: float, n_muestras: int) -> List[int]:
+    """
+    Generador Poisson.
+    Utiliza la multiplicación de variables uniformes hasta alcanzar el límite de e^(-lambda).
+    """
+    resultados: List[int] = []
+    l_limite = math.exp(-lambda_param)
+    for _ in range(n_muestras):
+        k = 0
+        p_prod = 1.0
+        while True:
+            k += 1
+            p_prod *= random.random()
+            if p_prod < l_limite:
+                break
+        resultados.append(k - 1)
+    return resultados
 
 def generador_valores_empirica_discreta(valores: List[tuple[int, float]], n: int):
     
@@ -201,9 +248,46 @@ def rejection_sampling_normal(n: int, MU: float, SIGMA: float, A: float, B: floa
 
     return accepted_points, rejected_points, n_tries
 
+# Agrego la función de rechazo para la uniforme, (es redundante pero es lo que quiere la catedra).
+def rejection_sampling_uniform(n: int, A: float, B: float, rng=None):
+    """
+    Genera n muestras de una Uniforme(A, B)
+    mediante el método del rechazo (demostrativo).
+    """
+    if rng is None:
+        rng = np.random.default_rng(seed=SEED_DEFAULT)
 
-def rejection_sampling_uniform():
-    pass
+    # Para la uniforme, f(x) = 1 / (B - A). 
+    # El valor máximo de f(x) es M = 1 / (B - A).
+    # Por lo tanto, el factor de escala C para que C * M = 1 es (B - A).
+    M = 1.0 / (B - A)
+    C = B - A
+
+    accepted_points: List[tuple[float, float]] = []
+    rejected_points: List[tuple[float, float]] = []
+    accepted: int = 0
+    n_tries: int = 0
+
+    while accepted < n:
+        # Paso 1: Generar candidato uniforme en [A, B]
+        r1: float = rng.uniform(0.0, 1.0)
+        x_candidate: float = A + (B - A) * r1
+
+        # Paso 2: Generar altura aleatoria uniforme
+        r2: float = rng.uniform(0.0, 1.0)
+
+        # Paso 3: Criterio de aceptación
+        # Como f(x) es constante, r2 <= C * f(x_candidate) se simplifica a r2 <= 1.
+        # Lo evaluamos formalmente para respetar la estructura del algoritmo de rechazo.
+        if r2 <= C * M:
+            accepted_points.append((x_candidate, r2))
+            accepted += 1
+        else:
+            rejected_points.append((x_candidate, r2))
+            
+        n_tries += 1
+
+    return accepted_points, rejected_points, n_tries
 
 def f_exp(lambda_param):
     """
@@ -515,8 +599,52 @@ def graficar_normal(puntos_aceptados: List[tuple[float, float]], puntos_rechazad
     plt.savefig("rechazo_normal.png", dpi=150)
     plt.show()
 
-def graficar_rechazo_uniforme():
-    pass
+# Agrego la funcion para graficar el rechazo de la exponencial
+def graficar_rechazo_uniforme(
+    puntos_aceptados: List[tuple[float, float]],
+    puntos_rechazados: List[tuple[float, float]],
+    intentos: int,
+    A: float,
+    B: float):
+    
+    accepted_x = [p[0] for p in puntos_aceptados]
+    accepted_r2 = [p[1] for p in puntos_aceptados]
+    rejected_x = [p[0] for p in puntos_rechazados]
+    rejected_r2 = [p[1] for p in puntos_rechazados]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # --- Histograma vs densidad teórica ---
+    ax = axes[0]
+    ax.hist(accepted_x, bins="auto", density=True, alpha=0.65, color='palegreen', label="Muestras")
+    
+    margen = (B - A) * 0.1
+    xs = np.linspace(A - margen, B + margen, 500)
+    ys = np.where((xs >= A) & (xs <= B), 1 / (B - A), 0)
+    
+    ax.plot(xs, ys, lw=1.5, color='darkgreen', label="Uniforme teórica")
+    ax.set_title("Histograma vs. densidad teórica")
+    ax.set_xlabel("x")
+    ax.set_ylabel("Densidad")
+    ax.legend()
+
+    # --- Geometría del rechazo ---
+    ax2 = axes[1]
+    ax2.scatter(accepted_x, accepted_r2, s=8, alpha=0.7, color='blue', label="Aceptado")
+    
+    # Prácticamente no habrá rechazados, pero lo dejamos por consistencia
+    if rejected_x:
+        ax2.scatter(rejected_x, rejected_r2, s=8, alpha=0.4, color='red', label="Rechazado")
+
+    ax2.plot(xs, np.where((xs >= A) & (xs <= B), 1.0, 0), lw=1.5, color='orange', label="c · f(x) (frontera=1)")
+    ax2.set_title("Geometría del método del rechazo")
+    ax2.set_xlabel("x (candidato r₁)")
+    ax2.set_ylabel("r₂ (criterio)")
+    ax2.legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig("rechazo_uniforme.png", dpi=150)
+    plt.show()
 
 def graficar_rechazo_exponencial(
     puntos_aceptados: List[tuple[float, float]],
@@ -529,7 +657,7 @@ def graficar_rechazo_exponencial(
     Grafica:
 
     1) Histograma de muestras aceptadas
-       vs densidad exponencial teórica
+        vs densidad exponencial teórica
 
     2) Geometría del método del rechazo
     """
@@ -668,6 +796,9 @@ if __name__ == "__main__":
         valores: List[float] = generador_valores_uniforme(a, b, args.observaciones)
         graficar_uniforme(a, b, valores)
         valores_np: List[float] = generador_np_uniforme(a, b, args.observaciones)
+        # Metodo rechazo Uniforme
+        accepted_points, rejected_points, intentos = rejection_sampling_uniform(args.observaciones, a, b)
+        graficar_rechazo_uniforme(accepted_points, rejected_points, intentos, a, b)
     elif args.distribucion == distribuciones['exponencial'].label:
         lambda_param = float(input("Ingrese el valor de lambda: "))
         valores: List[float] = generador_valores_exponencial(lambda_param, args.observaciones)        
@@ -699,3 +830,21 @@ if __name__ == "__main__":
         n = int(input("Ingrese el valor de n: "))
         p = float(input("Ingrese el valor de p: "))
         valores: List[float] = generador_valores_binomial(n, p, args.observaciones)
+        print(f"Valores Binomial generados: {valores[:10]}...")
+    elif args.distribucion == distribuciones['pascal'].label:
+        k = int(input("Ingrese el valor de k (número de éxitos esperados): "))
+        p = float(input("Ingrese el valor de p (probabilidad de éxito): "))
+        valores_pascal: List[int] = generador_valores_pascal(k, p, args.observaciones)
+        print(f"Valores Pascal generados: {valores_pascal[:10]}...")
+
+    elif args.distribucion == distribuciones['hipergeometrica'].label:
+        N = int(input("Ingrese el tamaño de la población total (N): "))
+        K = int(input("Ingrese el número de éxitos en la población (K): "))
+        n = int(input("Ingrese el tamaño de la muestra (n): "))
+        valores_hiper: List[int] = generador_valores_hipergeometrica(N, K, n, args.observaciones)
+        print(f"Valores Hipergeométrica generados: {valores_hiper[:10]}...")
+
+    elif args.distribucion == distribuciones['poisson'].label:
+        lambda_param = float(input("Ingrese el valor de lambda (tasa media de ocurrencia): "))
+        valores_poisson: List[int] = generador_valores_poisson(lambda_param, args.observaciones)
+        print(f"Valores Poisson generados: {valores_poisson[:10]}...")
