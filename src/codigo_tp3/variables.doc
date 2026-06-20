@@ -1,0 +1,16 @@
+Definimos las variables:
+	U (mu) = 10 clientes por hora
+	
+Escenario base:
+25%:  λ = 2.5 clientes/hora.
+50%:  λ = 5 clientes/hora.
+75%:  λ = 7.5 clientes/hora.
+100%: λ = 10 clientes/hora. (Aca se ve el límite de la estabilidad).
+125%: λ  = 12.5 clientes/hora. (Acá el sistema explota en cola infinita, pero se salva en cola finita).
+
+p: utilizacion.
+L: Promedio Clientes.
+Lq: Clientes en Cola.
+W: Tiempo en sistema.
+Wq: Tiempo en cola.
+Pk: Denegacion .
