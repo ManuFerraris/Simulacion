@@ -157,7 +157,7 @@ def generador_valores_poisson(lambda_param: float, n_muestras: int) -> List[int]
         resultados.append(k - 1)
     return resultados
 
-def generador_valores_empirica_discreta(valores: List[tuple[int, float]], n: int):
+def generador_valores_empirica_discreta(valores: List[tuple[int, float]], n: int) -> List[int]:
     
     acumuladas: list[float] = []
     valores_discretos: int = []
@@ -814,7 +814,8 @@ if __name__ == "__main__":
         alpha = int(input("Ingrese el valor de alpha: "))
         beta = float(input("Ingrese el valor de beta: "))
         valores: List[float] = generador_valores_gamma(alpha, beta, args.observaciones)
-        print(valores)
+        print(f"Valores Gamma generados: {valores[:10]}...")        
+        print(f"Media obtenida {np.mean(valores)}")
     elif args.distribucion == distribuciones['normal'].label:
         mu = int(input("Ingrese el valor de mu: "))
         sigma = float(input("Ingrese el valor de sigma: "))
@@ -826,25 +827,29 @@ if __name__ == "__main__":
         valores_np: List[float] = generador_np_normal(mu, sigma, args.observaciones)
     elif args.distribucion == distribuciones['empirica_discreta'].label:
         valores: List[int] = generador_valores_empirica_discreta(distribucion_empirica_discreta, args.observaciones)
+        print(f"Valores Empirica Discreta generados: {valores[:10]}...")        
+        print(f"Media obtenida {np.mean(valores)}")
     elif args.distribucion == distribuciones['binomial'].label:
         n = int(input("Ingrese el valor de n: "))
         p = float(input("Ingrese el valor de p: "))
         valores: List[float] = generador_valores_binomial(n, p, args.observaciones)
         print(f"Valores Binomial generados: {valores[:10]}...")
+        print(f"Media obtenida {np.mean(valores)}")
     elif args.distribucion == distribuciones['pascal'].label:
         k = int(input("Ingrese el valor de k (número de éxitos esperados): "))
         p = float(input("Ingrese el valor de p (probabilidad de éxito): "))
         valores_pascal: List[int] = generador_valores_pascal(k, p, args.observaciones)
         print(f"Valores Pascal generados: {valores_pascal[:10]}...")
-
+        print(f"Media obtenida {np.mean(valores_pascal)}")
     elif args.distribucion == distribuciones['hipergeometrica'].label:
         N = int(input("Ingrese el tamaño de la población total (N): "))
         K = int(input("Ingrese el número de éxitos en la población (K): "))
         n = int(input("Ingrese el tamaño de la muestra (n): "))
         valores_hiper: List[int] = generador_valores_hipergeometrica(N, K, n, args.observaciones)
         print(f"Valores Hipergeométrica generados: {valores_hiper[:10]}...")
-
+        print(f"Media obtenida {np.mean(valores_hiper)}")
     elif args.distribucion == distribuciones['poisson'].label:
         lambda_param = float(input("Ingrese el valor de lambda (tasa media de ocurrencia): "))
         valores_poisson: List[int] = generador_valores_poisson(lambda_param, args.observaciones)
         print(f"Valores Poisson generados: {valores_poisson[:10]}...")
+        print(f"Media obtenida {np.mean(valores_poisson)}")
