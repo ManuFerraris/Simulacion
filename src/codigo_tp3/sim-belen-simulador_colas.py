@@ -1,8 +1,10 @@
+import os
 import simpy
 import random
 import statistics
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from typing import List, Dict, Optional
 
 # ==============================================================================
 # 1. CLASE PRINCIPAL DEL MODELO M/M/1
@@ -146,6 +148,101 @@ def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_si
         "Prob_n_cola": prob_n_promedio,   # NUEVO
     }
 
+def graficar_prob_n_cola_por_tasa(
+    lista_resultados_infinita: List[Dict],
+    mu: float,
+    figsize: tuple[float, float] = (8, 5),
+    guardar_en: Optional[str] = None,
+    mostrar: bool = False,
+) -> List[plt.Figure]:
+    """
+    Genera una figure (ventana) independiente por cada tasa de arribo simulada,
+    comparando la distribución de probabilidad de n clientes en cola
+    SIMULADA (histograma azul) contra la TEÓRICA (histograma naranja),
+    usando la fórmula M/M/1: P(n) = (1 - rho) * rho^n.
+
+    Args:
+        lista_resultados_infinita: lista de diccionarios de resultados, uno por
+            cada tasa de arribo simulada. Cada diccionario debe contener al menos:
+                - "Prob_n_cola": Dict[int, float]  -> P(n) simulada por cada n
+                - "lambda": float                   -> tasa de arribo (lambda) usada
+                - "tasa_pct": float                 -> proporción respecto a mu (ej. 0.75)
+            (Esta es exactamente la estructura que devuelve correr_experimento_mm1
+            una vez agregado el campo "Prob_n_cola", más "lambda" y "tasa_pct".)
+        mu: tasa de servicio utilizada en las corridas (para calcular rho = lambda/mu).
+        figsize: tamaño (ancho, alto) en pulgadas de cada figura individual.
+        guardar_en: si se especifica una ruta de carpeta, cada figura se exporta
+            como PNG dentro de esa carpeta (se crea si no existe). Si es None,
+            no se guarda nada en disco.
+        mostrar: si es True, llama a plt.show() al final para desplegar todas
+            las ventanas generadas. Si es False, no muestra (útil si solo se
+            quiere guardar a disco sin abrir ventanas, por ejemplo en un script
+            batch).
+
+    Returns:
+        Lista de objetos Figure de matplotlib, uno por cada tasa de arribo,
+        en el mismo orden que lista_resultados_infinita. Útil si se quiere
+        manipular o guardar cada figura manualmente después de llamar a la función.
+    """
+    if guardar_en is not None:
+        os.makedirs(guardar_en, exist_ok=True)
+
+    figures: List[plt.Figure] = []
+
+    for res in lista_resultados_infinita:
+        prob_n_cola: Dict[int, float] = res["Prob_n_cola"]
+        lambd: float = res["lambda"]
+        tasa_pct: float = res["tasa_pct"]
+        rho: float = lambd / mu
+
+        n_max = max(prob_n_cola.keys())
+        ns = list(range(n_max + 1))
+        prob_simulada = [prob_n_cola[n] for n in ns]
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        ancho = 0.4
+        ax.bar(
+            [n - ancho / 2 for n in ns], prob_simulada, width=ancho,
+            label="Simulado", color="steelblue", edgecolor="black",
+        )
+
+        if rho < 1:
+            prob_teorica = [(1 - rho) * (rho ** n) for n in ns]
+            ax.bar(
+                [n + ancho / 2 for n in ns], prob_teorica, width=ancho,
+                label="Teórico", color="orange", edgecolor="black", alpha=0.8,
+            )
+        else:
+            # Sistema inestable (rho >= 1): la fórmula geométrica no converge,
+            # se marca explícitamente para no inducir a error en el análisis.
+            ax.text(
+                0.5, 0.5,
+                "ρ ≥ 1: sistema inestable\n(no hay distribución\nestacionaria teórica)",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color="red", style="italic",
+            )
+
+        ax.set_title(f"Probabilidad de n clientes en cola\nTasa de arribo: {tasa_pct*100:.0f}%  (ρ = {rho:.2f})")
+        ax.set_xlabel("n (clientes en cola)")
+        ax.set_ylabel("P(n)")
+        ax.set_xticks(ns)
+        ax.legend(fontsize=9)
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
+
+        fig.tight_layout()
+
+        if guardar_en is not None:
+            nombre_archivo = f"prob_n_cola_tasa_{int(tasa_pct*100)}pct.png"
+            ruta_completa = os.path.join(guardar_en, nombre_archivo)
+            fig.savefig(ruta_completa, dpi=150)
+
+        figures.append(fig)
+
+    if mostrar:
+        plt.show()
+
+    return figures
 # ==============================================================================
 # 3. BLOQUE DE EJECUCIÓN CON GENERACIÓN DE GRÁFICOS
 # ==============================================================================
@@ -223,61 +320,10 @@ if __name__ == "__main__":
     plt.xlabel("Capacidad Máxima de la Cola")
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     
-    # ==============================================================================
-    # GRÁFICO NUEVO: P(n) simulado vs teórico, un subplot por cada tasa de arribo
-    # Grilla 2 columnas x 3 filas, última fila con 1 solo subplot ocupando ambas columnas
-    # ==============================================================================
-
-    fig = plt.figure(figsize=(13, 12))
-    gs = gridspec.GridSpec(3, 2, figure=fig)
-
-    # Posiciones de los primeros 4 subplots (2x2), y el 5to ocupando toda la fila 3
-    posiciones = [
-        gs[0, 0],  # fila 0, col 0
-        gs[0, 1],  # fila 0, col 1
-        gs[1, 0],  # fila 1, col 0
-        gs[1, 1],  # fila 1, col 1
-        gs[2, :],  # fila 2, ambas columnas
-    ]
-
-    for idx, res in enumerate(lista_resultados_infinita):
-        ax = fig.add_subplot(posiciones[idx])
-
-        n_max = max(res["Prob_n_cola"].keys())
-        ns = list(range(n_max + 1))
-
-        # --- Valores SIMULADOS (ya calculados con el método de áreas) ---
-        prob_simulada = [res["Prob_n_cola"][n] for n in ns]
-
-        # --- Valores TEÓRICOS: P(n) = (1 - rho) * rho^n ---
-        rho = res["lambda"] / MU
-        if rho < 1:
-            prob_teorica = [(1 - rho) * (rho ** n) for n in ns]
-        else:
-            # Sistema inestable (rho >= 1): la fórmula geométrica no converge,
-            # se marca explícitamente para no inducir a error en el informe.
-            prob_teorica = [None for n in ns]
-
-        ancho = 0.4
-        ax.bar([n - ancho/2 for n in ns], prob_simulada, width=ancho,
-            label="Simulado", color="steelblue", edgecolor="black")
-
-        if rho < 1:
-            ax.bar([n + ancho/2 for n in ns], prob_teorica, width=ancho,
-                label="Teórico", color="orange", edgecolor="black", alpha=0.8)
-        else:
-            ax.text(0.5, 0.5, "ρ ≥ 1: sistema inestable\n(no hay distribución\nestacionaria teórica)",
-                    transform=ax.transAxes, ha="center", va="center",
-                    fontsize=9, color="red", style="italic")
-
-        ax.set_title(f"Tasa de arribo: {res['tasa_pct']*100:.0f}%  (ρ = {rho:.2f})")
-        ax.set_xlabel("n (clientes en cola)")
-        ax.set_ylabel("P(n)")
-        ax.set_xticks(ns)
-        ax.legend(fontsize=8)
-        ax.grid(axis='y', linestyle='--', alpha=0.5)
-
-    fig.suptitle("Probabilidad de encontrar n clientes en cola: Simulado vs Teórico", fontsize=14)
+    graficar_prob_n_cola_por_tasa(
+        lista_resultados_infinita=lista_resultados_infinita,
+        mu=MU,
+    )
     plt.tight_layout(rect=[0, 0, 1, 0.96])  # deja espacio para el suptitle    
     
     # Mostrar gráficos en pantalla
