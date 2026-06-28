@@ -32,7 +32,7 @@ class SimuladorMM1:
         self.total_llegadas = 0
         self.total_rechazos = 0
 
-        # NUEVO: diccionario para acumular tiempo en cada estado n (clientes en cola)
+        # diccionario para acumular tiempo en cada estado n (clientes en cola)
         self.n_max_tracking = n_max_tracking  # tope para no trackear infinitos estados
         self.tiempo_en_estado_cola = {n: 0.0 for n in range(n_max_tracking + 1)}
         # estado "n_max_tracking o más" se acumula aparte, por si la cola supera el tope
@@ -51,7 +51,7 @@ class SimuladorMM1:
             self.area_cola += en_cola * duracion
             self.area_servidor += en_servidor * duracion
             
-            # NUEVO: acumular tiempo en el estado "n clientes en cola" que estuvo vigente
+            # acumular tiempo en el estado "n clientes en cola" que estuvo vigente
             # OJO: el estado vigente ANTES del cambio era 'en_cola' (porque actualizamos
             # la duración transcurrida desde el último cambio hasta ahora, durante la
             # cual la cola tuvo ese valor de 'en_cola')
@@ -107,7 +107,7 @@ def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_si
     resultados_Util = []
     resultados_Rechazo = []
     
-    # NUEVO: acumulador de probabilidades por n, sumado entre corridas
+    # acumulador de probabilidades por n, sumado entre corridas
     suma_prob_n = {n: 0.0 for n in range(n_max_tracking + 1)}
 
     for i in range(num_corridas):
@@ -130,12 +130,12 @@ def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_si
         resultados_Util.append(sim.area_servidor / t_final)
         resultados_Rechazo.append((sim.total_rechazos / sim.total_llegadas * 100) if sim.total_llegadas > 0 else 0)
 
-        # NUEVO: probabilidad de cada n EN ESTA corrida, y la sumamos para promediar después
+        # probabilidad de cada n EN ESTA corrida, y la sumamos para promediar después
         for n in range(n_max_tracking + 1):
             prob_n_esta_corrida = sim.tiempo_en_estado_cola[n] / t_final
             suma_prob_n[n] += prob_n_esta_corrida
     
-    # NUEVO: promedio de P(n) entre las 30 corridas
+    # promedio de P(n) entre las 30 corridas
     prob_n_promedio = {n: suma_prob_n[n] / num_corridas for n in range(n_max_tracking + 1)}
         
     return {
@@ -145,7 +145,7 @@ def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_si
         "Wq": statistics.mean(resultados_Wq),
         "Utilizacion": statistics.mean(resultados_Util),
         "Rechazo": statistics.mean(resultados_Rechazo),
-        "Prob_n_cola": prob_n_promedio,   # NUEVO
+        "Prob_n_cola": prob_n_promedio,
     }
 
 def graficar_prob_n_cola_por_tasa(
@@ -249,7 +249,8 @@ def graficar_prob_n_cola_por_tasa(
 if __name__ == "__main__":
     print("--- SIMULADOR DE COLAS M/M/1 INTERACTIVO ---")
     MU = float(input("Ingrese la tasa de servicio MU (ej. 10 clientes por unidad de tiempo): "))
-    
+    tiempo_sim_input = input("Ingrese el tiempo de simulación (default 2000 unidades de tiempo): ")
+    tiempo_sim = 2000.0 if tiempo_sim_input == "" else float(tiempo_sim_input)
     variacion_tasas_arribo = [0.25, 0.50, 0.75, 1.00, 1.25]
 
     # Listas para guardar datos que van a los gráficos
@@ -261,7 +262,7 @@ if __name__ == "__main__":
     print("\nEjecutando experimentos para Cola Infinita variando tasas...")
     for t in variacion_tasas_arribo:
         LAMBDA = MU * t
-        res = correr_experimento_mm1(lambd=LAMBDA, mu=MU, capacidad_cola=None)
+        res = correr_experimento_mm1(lambd=LAMBDA, mu=MU, capacidad_cola=None, tiempo_sim=tiempo_sim)
         
         lista_lambdas.append(f"{t*100}%")
         lista_Lq.append(res['Lq'])
@@ -284,7 +285,7 @@ if __name__ == "__main__":
     print("\n-------------------------------------------------------------")
     print("Ejecutando experimentos para Cola Finita (Denegación de servicio)...")
     for cap in capacidades_cola:
-        res_finita = correr_experimento_mm1(lambd=MU, mu=MU, capacidad_cola=cap)
+        res_finita = correr_experimento_mm1(lambd=MU, mu=MU, capacidad_cola=cap, tiempo_sim=tiempo_sim)
         lista_rechazos.append(res_finita['Rechazo'])
         print(f"  - Capacidad de Cola: {cap} | Probabilidad de Rechazo: {res_finita['Rechazo']:.2f}%")
 
