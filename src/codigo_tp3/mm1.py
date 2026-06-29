@@ -89,7 +89,7 @@ class SimuladorMM1:
 # ==============================================================================
 # 2. FUNCIÓN PARA CORRER LAS 30 CORRIDAS INDEPENDIENTES
 # ==============================================================================
-def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_sim=2000):
+def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_sim=2500):
     resultados_L = []
     resultados_Lq = []
     resultados_W = []
@@ -283,8 +283,8 @@ def graficar_prob_n_cola_por_tasa(
 if __name__ == "__main__":
     print("--- SIMULADOR DE COLAS M/M/1 INTERACTIVO ---")
     MU = float(input("Ingrese la tasa de servicio MU (ej. 10 clientes por unidad de tiempo): "))
-    tiempo_sim_input = input("Ingrese el tiempo de simulación (default 2000 unidades de tiempo): ")
-    tiempo_sim = 2000.0 if tiempo_sim_input == "" else float(tiempo_sim_input)
+    tiempo_sim_input = input("Ingrese el tiempo de simulación (default 2500 unidades de tiempo): ")
+    tiempo_sim = 2500.0 if tiempo_sim_input == "" else float(tiempo_sim_input)
     variacion_tasas_arribo = [0.25, 0.50, 0.75, 1.00, 1.25]
 
     # Listas para guardar datos que van a los gráficos
@@ -308,21 +308,31 @@ if __name__ == "__main__":
 
 
         print(f"\nTasas de arribo al {t*100}% de tasa de servicio -> Lambda = {LAMBDA}")
+        print(f"  - Promedio de clientes en sistema (L): {res['L']:.4f}")
         print(f"  - Promedio de clientes en cola (Lq): {res['Lq']:.4f}")
         print(f"  - Tiempo promedio en cola (Wq): {res['Wq']:.4f}")
+        print(f"  - Tiempo promedio en sistema (W): {res['W']:.4f}")
         print(f"  - Utilización del servidor: {res['Utilizacion']*100:.2f}%")
 
     # Guardar datos para el segundo gráfico (Cola Finita)
     capacidades_cola = [0, 2, 5, 10, 50]
-    lista_rechazos = []
-    
+    resultados_finita: Dict[float, Dict[int, float]] = {}
+
     print("\n-------------------------------------------------------------")
     print("Ejecutando experimentos para Cola Finita (Denegación de servicio)...")
-    for cap in capacidades_cola:
-        res_finita = correr_experimento_mm1(lambd=MU, mu=MU, capacidad_cola=cap, tiempo_sim=tiempo_sim)
-        lista_rechazos.append(res_finita['Rechazo'])
-        print(f"  - Capacidad de Cola: {cap} | Probabilidad de Rechazo: {res_finita['Rechazo']:.2f}%")
-
+    for t in variacion_tasas_arribo:
+        LAMBDA = MU * t
+        resultados_finita[t] = {}
+        for cap in capacidades_cola:
+            res = correr_experimento_mm1(lambd=LAMBDA, mu=MU, capacidad_cola=cap, tiempo_sim=tiempo_sim)
+            resultados_finita[t][cap] = res['Rechazo']
+            print(f"\n  rho={t:.2f} | Capacidad={cap:>3} | Rechazo={res['Rechazo']:.2f}%")
+            print(f"  - Promedio de clientes en sistema (L): {res['L']:.4f}")
+            print(f"  - Promedio de clientes en cola (Lq): {res['Lq']:.4f}")
+            print(f"  - Tiempo promedio en cola (Wq): {res['Wq']:.4f}")
+            print(f"  - Tiempo promedio en sistema (W): {res['W']:.4f}")
+            print(f"  - Utilización del servidor: {res['Utilizacion']*100:.2f}%")
+    
     print("\n[INFO] Generando gráficos... Cerrá las ventanas para finalizar el programa.")
 
     # --- GRÁFICO 1: Comportamiento de la cola (Infinita) ---
@@ -346,15 +356,20 @@ if __name__ == "__main__":
     
     plt.tight_layout()
     
-    # --- GRÁFICO 2: Denegación de Servicio (Finita) ---
-    plt.figure(figsize=(7, 4))
-    nombres_barras = [f"Cola: {c}" for c in capacidades_cola]
-    plt.bar(nombres_barras, lista_rechazos, color='purple', edgecolor='black')
-    plt.title("Probabilidad de Denegación de Servicio (Rechazos)")
+    # --- GRÁFICO Denegación de Servicio en funcion de capacidad de cola (Finita) ---
+    plt.figure(figsize=(8, 5))
+    for t in variacion_tasas_arribo:
+        rechazos = [resultados_finita[t][cap] for cap in capacidades_cola]
+        plt.plot(capacidades_cola, rechazos, marker='o', label=f"ρ={t:.2f}")
+
+    plt.title("Probabilidad de Rechazo vs Capacidad de Cola, por nivel de carga")
+    plt.xlabel("Capacidad máxima de la cola")
     plt.ylabel("% de Clientes Rechazados")
-    plt.xlabel("Capacidad Máxima de la Cola")
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()    
     
+    # --- GRÁFICO probabilidad N clientes en cola
     graficar_prob_n_cola_por_tasa(
         lista_resultados_infinita=lista_resultados_infinita,
         mu=MU,
