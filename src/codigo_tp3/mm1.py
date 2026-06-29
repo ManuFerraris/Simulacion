@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import simpy
 import random
@@ -10,7 +11,7 @@ from typing import List, Dict, Optional
 # 1. CLASE PRINCIPAL DEL MODELO M/M/1
 # ==============================================================================
 class SimuladorMM1:
-    def __init__(self, env, lambd, mu, capacidad_cola=None, n_max_tracking=20):
+    def __init__(self, env, lambd, mu, capacidad_cola=None):
         self.env = env
         self.lambd = lambd
         self.mu = mu
@@ -32,11 +33,7 @@ class SimuladorMM1:
         self.total_llegadas = 0
         self.total_rechazos = 0
 
-        # diccionario para acumular tiempo en cada estado n (clientes en cola)
-        self.n_max_tracking = n_max_tracking  # tope para no trackear infinitos estados
-        self.tiempo_en_estado_cola = {n: 0.0 for n in range(n_max_tracking + 1)}
-        # estado "n_max_tracking o más" se acumula aparte, por si la cola supera el tope
-        self.tiempo_en_estado_cola_excedente = 0.0
+        self.tiempo_en_estado_cola: Dict[int, float] = defaultdict(float)
 
     def actualizar_areas(self):
         ahora = self.env.now
@@ -51,14 +48,7 @@ class SimuladorMM1:
             self.area_cola += en_cola * duracion
             self.area_servidor += en_servidor * duracion
             
-            # acumular tiempo en el estado "n clientes en cola" que estuvo vigente
-            # OJO: el estado vigente ANTES del cambio era 'en_cola' (porque actualizamos
-            # la duración transcurrida desde el último cambio hasta ahora, durante la
-            # cual la cola tuvo ese valor de 'en_cola')
-            if en_cola <= self.n_max_tracking:
-                self.tiempo_en_estado_cola[en_cola] += duracion
-            else:
-                self.tiempo_en_estado_cola_excedente += duracion
+            self.tiempo_en_estado_cola[en_cola] += duracion
 
         self.ultimo_cambio_tiempo = ahora
 
@@ -99,16 +89,14 @@ class SimuladorMM1:
 # ==============================================================================
 # 2. FUNCIÓN PARA CORRER LAS 30 CORRIDAS INDEPENDIENTES
 # ==============================================================================
-def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_sim=2000, n_max_tracking=20):
+def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_sim=2000):
     resultados_L = []
     resultados_Lq = []
     resultados_W = []
     resultados_Wq = []
     resultados_Util = []
     resultados_Rechazo = []
-    
-    # acumulador de probabilidades por n, sumado entre corridas
-    suma_prob_n = {n: 0.0 for n in range(n_max_tracking + 1)}
+    suma_prob_n: Dict[int, float] = defaultdict(float)
 
     for i in range(num_corridas):
         random.seed(500 + i) 
@@ -130,14 +118,12 @@ def correr_experimento_mm1(lambd, mu, capacidad_cola, num_corridas=30, tiempo_si
         resultados_Util.append(sim.area_servidor / t_final)
         resultados_Rechazo.append((sim.total_rechazos / sim.total_llegadas * 100) if sim.total_llegadas > 0 else 0)
 
-        # probabilidad de cada n EN ESTA corrida, y la sumamos para promediar después
-        for n in range(n_max_tracking + 1):
-            prob_n_esta_corrida = sim.tiempo_en_estado_cola[n] / t_final
+        for n, tiempo_en_n in sim.tiempo_en_estado_cola.items():
+            prob_n_esta_corrida = tiempo_en_n / t_final
             suma_prob_n[n] += prob_n_esta_corrida
     
-    # promedio de P(n) entre las 30 corridas
-    prob_n_promedio = {n: suma_prob_n[n] / num_corridas for n in range(n_max_tracking + 1)}
-        
+    prob_n_promedio = {n: suma / num_corridas for n, suma in suma_prob_n.items()}
+    
     return {
         "L": statistics.mean(resultados_L),
         "Lq": statistics.mean(resultados_Lq),
@@ -154,6 +140,7 @@ def graficar_prob_n_cola_por_tasa(
     figsize: tuple[float, float] = (8, 5),
     guardar_en: Optional[str] = None,
     mostrar: bool = False,
+    max_barras: int = 30,
 ) -> List[plt.Figure]:
     """
     Genera una figure (ventana) independiente por cada tasa de arribo simulada,
@@ -195,38 +182,85 @@ def graficar_prob_n_cola_por_tasa(
         tasa_pct: float = res["tasa_pct"]
         rho: float = lambd / mu
 
-        n_max = max(prob_n_cola.keys())
-        ns = list(range(n_max + 1))
-        prob_simulada = [prob_n_cola[n] for n in ns]
+        n_max = max(prob_n_cola.keys()) if prob_n_cola else 0
+        cantidad_valores_n = n_max + 1  # cantidad de enteros en [0, n_max]
 
         fig, ax = plt.subplots(figsize=figsize)
 
-        ancho = 0.4
-        ax.bar(
-            [n - ancho / 2 for n in ns], prob_simulada, width=ancho,
-            label="Simulado", color="steelblue", edgecolor="black",
-        )
+        if cantidad_valores_n <= max_barras:
+            # --- CASO CHICO: una barra por cada n, igual que antes ---
+            ns = list(range(n_max + 1))
+            prob_simulada = [prob_n_cola.get(n, 0.0) for n in ns]
 
-        if rho < 1:
-            prob_teorica = [(1 - rho) * (rho ** n) for n in ns]
+            ancho = 0.4
             ax.bar(
-                [n + ancho / 2 for n in ns], prob_teorica, width=ancho,
-                label="Teórico", color="orange", edgecolor="black", alpha=0.8,
-            )
-        else:
-            # Sistema inestable (rho >= 1): la fórmula geométrica no converge,
-            # se marca explícitamente para no inducir a error en el análisis.
-            ax.text(
-                0.5, 0.5,
-                "ρ ≥ 1: sistema inestable\n(no hay distribución\nestacionaria teórica)",
-                transform=ax.transAxes, ha="center", va="center",
-                fontsize=10, color="red", style="italic",
+                [n - ancho / 2 for n in ns], prob_simulada, width=ancho,
+                label="Simulado", color="steelblue", edgecolor="black",
             )
 
-        ax.set_title(f"Probabilidad de n clientes en cola\nTasa de arribo: {tasa_pct*100:.0f}%  (ρ = {rho:.2f})")
-        ax.set_xlabel("n (clientes en cola)")
+            if rho < 1:
+                prob_teorica = [(1 - rho) * (rho ** n) for n in ns]
+                ax.bar(
+                    [n + ancho / 2 for n in ns], prob_teorica, width=ancho,
+                    label="Teórico", color="orange", edgecolor="black", alpha=0.8,
+                )
+
+            ax.set_xticks(ns)
+            ax.set_xlabel("n (clientes en cola)")
+
+        else:
+            # --- CASO GRANDE: agrupar en bins de tamaño uniforme ---
+            tam_bin = max(1, -(-cantidad_valores_n // max_barras))  # ceil division
+            n_bins = -(-cantidad_valores_n // tam_bin)  # ceil division
+
+            bin_centros = []
+            bin_etiquetas = []
+            prob_simulada_bin = []
+            prob_teorica_bin = []
+
+            for b in range(n_bins):
+                n_inicio = b * tam_bin
+                n_fin = min(n_inicio + tam_bin - 1, n_max)
+
+                # Suma de probabilidad simulada de todos los n dentro del bin
+                suma_sim = sum(prob_n_cola.get(n, 0.0) for n in range(n_inicio, n_fin + 1))
+                prob_simulada_bin.append(suma_sim)
+
+                if rho < 1:
+                    suma_teo = sum((1 - rho) * (rho ** n) for n in range(n_inicio, n_fin + 1))
+                    prob_teorica_bin.append(suma_teo)
+
+                bin_centros.append(b)
+                bin_etiquetas.append(f"{n_inicio}" if n_inicio == n_fin else f"{n_inicio}-{n_fin}")
+
+            ancho = 0.4
+            ax.bar(
+                [b - ancho / 2 for b in bin_centros], prob_simulada_bin, width=ancho,
+                label="Simulado", color="steelblue", edgecolor="black",
+            )
+
+            if rho < 1:
+                ax.bar(
+                    [b + ancho / 2 for b in bin_centros], prob_teorica_bin, width=ancho,
+                    label="Teórico", color="orange", edgecolor="black", alpha=0.8,
+                )
+
+            # Mostrar solo algunas etiquetas de bin si hay muchas, para no saturar
+            paso_etiquetas = max(1, len(bin_centros) // 15)
+            ax.set_xticks(bin_centros[::paso_etiquetas])
+            ax.set_xticklabels(bin_etiquetas[::paso_etiquetas], rotation=45, ha="right", fontsize=7)
+            ax.set_xlabel(f"n (clientes en cola, agrupado de a {tam_bin})")
+
+        if rho >= 1:
+            ax.text(
+                0.02, 0.95,
+                "ρ ≥ 1: sistema inestable\n(sin distribución estacionaria teórica)",
+                transform=ax.transAxes, ha="left", va="top",
+                fontsize=9, color="red", style="italic",
+            )
+
+        ax.set_title(f"Probabilidad de n clientes en cola\nTasa de arribo: {tasa_pct*100:.0f}%  (ρ = {rho:.2f}, n_max observado = {n_max})")
         ax.set_ylabel("P(n)")
-        ax.set_xticks(ns)
         ax.legend(fontsize=9)
         ax.grid(axis="y", linestyle="--", alpha=0.5)
 
